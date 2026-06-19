@@ -22,6 +22,8 @@ from organizations.views import OrganizationViewSet, MembershipViewSet
 from projects.views import ProjectViewSet
 from tasks.views import TaskViewSet
 
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 router = DefaultRouter()
 router.register(r"organizations", OrganizationViewSet)
 router.register(r"memberships", MembershipViewSet)
@@ -31,4 +33,9 @@ router.register(r"tasks", TaskViewSet)
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
+]
+
+urlpatterns += [
+    path("api/token/", TokenObtainPairView.as_view()),
+    path("api/token/refresh/", TokenRefreshView.as_view()),
 ]
