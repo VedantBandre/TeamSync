@@ -1,35 +1,61 @@
-from django.shortcuts import render
+from django.db import transaction
 from rest_framework import viewsets
+from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
+
+from tasks.models import Task
+
 from .models import Organization, Membership
+from .permissions import IsOrganizationAdminOrReadOnly
 from .serializers import OrganizationSerializer, MembershipSerializer
 
-# Create your views here.
+
 class OrganizationViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOrganizationAdminOrReadOnly]
     serializer_class = OrganizationSerializer
     queryset = Organization.objects.all()
+
     def get_queryset(self):
-        return Organization.objects.filter(
-            membership_user=self.request.user
-        )
-    
+        return Organization.objects.filter(membership__user=self.request.user)
+
+    @transaction.atomic
     def perform_create(self, serializer):
-        organization = serializer.save()
+        organization = serializer.save(created_by=self.request.user)
         Membership.objects.create(
-            user=self.request.user,
-            organization=organization,
-            role="ADMIN"
+            user=self.request.user, organization=organization, role="ADMIN"
         )
 
 
 class MembershipViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsOrganizationAdminOrReadOnly]
     serializer_class = MembershipSerializer
     queryset = Membership.objects.all()
-    
+
     def get_queryset(self):
         return Membership.objects.filter(
-            user=self.request.user
-        )
-    
+            organization__membership__user=self.request.user
+        ).select_related("organization", "user")
+
+    def protect_last_admin(self, membership):
+        # Serialize admin removals within an organization on databases with row locks.
+        Organization.objects.select_for_update().get(pk=membership.organization_id)
+        membership.refresh_from_db()
+        if membership.role == "ADMIN" and not Membership.objects.filter(
+            organization_id=membership.organization_id, role="ADMIN"
+        ).exclude(pk=membership.pk).exists():
+            raise ValidationError({"role": "An organization must retain at least one admin."})
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        if serializer.validated_data.get("role") == "MEMBER":
+            self.protect_last_admin(serializer.instance)
+        serializer.save()
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        self.protect_last_admin(instance)
+        Task.objects.filter(
+            project__organization_id=instance.organization_id,
+            assigned_to_id=instance.user_id,
+        ).update(assigned_to=None)
+        instance.delete()
