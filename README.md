@@ -217,3 +217,36 @@ successfully; failed moves retain the original status and display an error.
 
 `dev/task-controls` builds on `dev/project-navigation`; review the task controls
 against that branch until the earlier work reaches `main`.
+
+
+### Task comments and activity
+
+Open the comment icon on a task to view its discussion. Team members can post
+plain-text comments (up to 4,000 characters), edit their own comments, and delete
+them after confirmation. Authors are bound by the server. Other teammates can
+read comments but cannot change them. Removed members and outsiders lose access.
+
+The activity list records new task creation, changes to title, description,
+status, priority, assignee, and deadline, plus comment additions, edits, and
+removals. Automatic unassignment after member removal is recorded as well.
+No-op edits produce no activity. Records and the changes they describe commit
+in the same transaction. Comment text is not copied into activity records.
+Authors' names remain visible if their user accounts are later removed.
+Existing tasks start recording new changes; earlier activity is not fabricated.
+Deleting a task/project/team also removes the related discussion and activity.
+This is a collaboration history, not a permanent compliance audit log.
+
+Authenticated endpoints, all scoped to the task's team:
+
+- `GET/POST /api/tasks/<id>/comments/`
+- `PATCH/DELETE /api/tasks/<id>/comments/<comment_id>/` (author only)
+- `GET /api/tasks/<id>/activity/` (read only)
+
+Comments and activity return `{count, next, previous, results}` with 20 records
+per page, newest first. Use `?page=2` and the UI's Load more buttons for older
+entries. Refresh discussion retrieves current comments and history. Drafts remain
+available after failed writes; successful writes are distinguished from a failed
+subsequent refresh so users are not encouraged to submit duplicates.
+
+`dev/task-discussion` builds on `dev/task-controls` while the earlier branches
+await integration into `main`.

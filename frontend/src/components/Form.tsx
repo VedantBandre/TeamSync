@@ -42,12 +42,18 @@ export function Field({
 export function SubmitButton({
   busy,
   children,
+  disabled = false,
 }: {
+  disabled?: boolean;
   busy: boolean;
   children: ReactNode;
 }) {
   return (
-    <button className="button primary" type="submit" disabled={busy}>
+    <button
+      className="button primary"
+      type="submit"
+      disabled={busy || disabled}
+    >
       {busy && <LoaderCircle size={16} className="spin" />}
       {busy ? "Saving…" : children}
     </button>

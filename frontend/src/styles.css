@@ -932,6 +932,8 @@ fieldset {
   gap: 15px;
 }
 .dialog-heading h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: 20px;
   letter-spacing: -0.5px;
 }
@@ -1654,4 +1656,114 @@ td select {
   .task-drag-handle {
     display: none;
   }
+}
+
+.discussion {
+  padding-top: 12px;
+}
+.discussion-intro,
+.discussion-empty,
+.comment-edited {
+  color: var(--muted);
+  font-size: 12px;
+}
+.discussion-refresh {
+  display: flex;
+  justify-content: flex-end;
+  margin: 14px 0;
+}
+.discussion-notice {
+  font-size: 12px;
+  color: var(--green);
+}
+.discussion h3 {
+  margin: 20px 0 14px;
+  font-size: 15px;
+}
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.comment-form label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.comment-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  resize: vertical;
+  min-height: 85px;
+  font: inherit;
+  font-size: 13px;
+}
+.comment-form > button {
+  align-self: flex-end;
+}
+.comment {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+.comment-heading {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.comment-heading time,
+.activity-list time {
+  font-size: 10px;
+  color: #586654;
+}
+.comment-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 12px 0;
+}
+.comment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 12px;
+}
+.activity-section {
+  margin-top: 25px;
+  border-top: 1px solid var(--line);
+}
+.activity-list {
+  list-style: none;
+  padding: 0;
+}
+.activity-list li {
+  padding: 13px 0 13px 15px;
+  border-left: 2px solid #dce6d7;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.activity-list p {
+  font-size: 12px;
+  margin: 0 0 5px;
+  line-height: 1.6;
+}
+.activity-list .activity-change {
+  margin-top: 6px;
+  color: #586654;
+  white-space: pre-wrap;
+}
+
+.comment-heading strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.comment-actions .danger-text {
+  color: #9b3028;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { TaskDiscussion } from "./TaskDiscussion";
 import { filterTasks, type DueFilter } from "../lib/taskFilters";
 import { priorities } from "../lib/types";
 import {
@@ -67,6 +68,7 @@ export function Workspace({
   const [assignee, setAssignee] = useState("all");
   const [due, setDue] = useState<DueFilter>("all");
   const [priority, setPriority] = useState("all");
+  const [discussion, setDiscussion] = useState<Task | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [pending, setPending] = useState<number | null>(null);
   useEffect(() => {
@@ -106,6 +108,7 @@ export function Workspace({
   useEffect(() => {
     const reset = () => {
       setEditor(null);
+      setDiscussion(null);
       setQuery("");
       setMine(false);
       setAssignee("all");
@@ -862,6 +865,7 @@ export function Workspace({
                 tasks={visibleTasks}
                 members={members}
                 pending={pending ?? (loading ? -1 : null)}
+                onDiscuss={setDiscussion}
                 onEdit={(task) => setEditor({ kind: "task", item: task })}
                 onDelete={(task) =>
                   setEditor({
@@ -892,6 +896,14 @@ export function Workspace({
           )}
         </main>
       </div>
+      {discussion && (
+        <TaskDiscussion
+          key={discussion.id}
+          task={discussion}
+          user={user}
+          onClose={() => setDiscussion(null)}
+        />
+      )}
       {editor && (
         <EditorDialog
           key={JSON.stringify(editor)}

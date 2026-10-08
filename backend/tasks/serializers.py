@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from organizations.models import Membership
 from projects.models import Project
-from .models import Task
+from .models import Task, TaskComment, TaskActivity
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -34,3 +34,27 @@ class TaskSerializer(serializers.ModelSerializer):
         ).exists():
             raise serializers.ValidationError({"assigned_to": "Assignee must belong to this project's organization."})
         return attrs
+
+
+class TaskCommentSerializer(serializers.ModelSerializer):
+    body = serializers.CharField(max_length=4000, trim_whitespace=True)
+
+    def create(self, validated_data):
+        comment = super().create(validated_data)
+        # Django evaluates the two automatic timestamps separately on insertion.
+        # A new comment is not an edit; expose the same timestamp until it changes.
+        TaskComment.objects.filter(pk=comment.pk).update(updated_at=comment.created_at)
+        comment.updated_at = comment.created_at
+        return comment
+
+    class Meta:
+        model = TaskComment
+        fields = ["id", "task", "author", "author_name", "body", "created_at", "updated_at"]
+        read_only_fields = ["id", "task", "author", "author_name", "created_at", "updated_at"]
+
+
+class TaskActivitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskActivity
+        fields = ["id", "actor", "actor_name", "kind", "changes", "created_at"]
+        read_only_fields = fields
