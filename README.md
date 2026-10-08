@@ -38,8 +38,21 @@ Django at `http://127.0.0.1:8000`.
 
 Create an account and sign in. Create a team and project, then add tasks, choose
 assignees, set due dates, and move work between To do / In progress / Done.
-Search and "Assigned to me" filter the current board. The Team members screen
-shows the team's members and exposes admin controls to add people, change roles,
+Search and "Assigned to me" filter the current board.
+
+Project URLs contain the selected team and project, for example
+`/?team=1&project=2`. Refresh and browser Back/Forward preserve navigation, including
+the Team members view. Project links in the sidebar support opening a new tab.
+Use **Copy project link** on the board to share its address; if clipboard access
+is unavailable, the app offers a selectable link. Signed-out users return to the
+linked project after signing in. A link does not grant membership or bypass API
+permissions. Missing, malformed, or inaccessible links show an unavailable screen
+with a way back to your own workspace.
+
+Links point to the host where TeamSync is running. A localhost link works on the
+same computer; teammates on other computers need the app hosted at a shared address.
+
+The Team members screen shows the team's members and exposes admin controls to add people, change roles,
 rename the team, and remove members. Project/task editing and deletion are also
 available, with confirmation before deletion.
 
@@ -179,3 +192,7 @@ The frontend was started on `dev/frontend-workflow` from `dev/backend-workflow`.
 If the backend pull request is still open, review the frontend against that branch
 first. Once the backend is merged, update the frontend branch against `main` before
 opening its final pull request.
+
+Project navigation changes are isolated on `dev/project-navigation`, based on
+`dev/frontend-workflow`. Review this branch against the frontend branch until
+that work is merged into `main`.

@@ -129,6 +129,10 @@ test("a team can register, organize projects, and move tasks forward", async ({
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(
+    page.getByRole("heading", { name: "Meet your team." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Project board" }).click();
+  await expect(
     page.getByRole("heading", { name: "Product launch." }),
   ).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit project" })).toHaveCount(
@@ -149,4 +153,162 @@ test("a team can register, organize projects, and move tasks forward", async ({
     page.getByRole("button", { name: "Add member", exact: true }),
   ).toHaveCount(0);
   expect(errors).toEqual([]);
+});
+
+test("project links survive sign-in, refresh, history, and denied access", async ({
+  page,
+  request,
+  context,
+}, testInfo) => {
+  const api = "http://127.0.0.1:8001/api";
+  const suffix = `${Date.now()}_${testInfo.project.name}`;
+  const username = `navigation_${suffix}`;
+  const outsider = `outsider_${suffix}`;
+  const password = "A-strong-test-password-904!";
+  async function account(name: string) {
+    expect(
+      (
+        await request.post(`${api}/register/`, {
+          data: { username: name, password },
+        })
+      ).status(),
+    ).toBe(201);
+    const response = await request.post(`${api}/token/`, {
+      data: { username: name, password },
+    });
+    expect(response.status()).toBe(200);
+    return { Authorization: `Bearer ${(await response.json()).access}` };
+  }
+  const headers = await account(username);
+  async function create(
+    resource: string,
+    data: Record<string, unknown>,
+    authorization = headers,
+  ) {
+    const response = await request.post(`${api}/${resource}/`, {
+      data,
+      headers: authorization,
+    });
+    expect(response.status()).toBe(201);
+    return response.json();
+  }
+  const team = await create("organizations", { name: "Navigation team" });
+  const other = await create("organizations", { name: "Second team" });
+  const first = await create("projects", {
+    organization: team.id,
+    name: "First project",
+  });
+  const second = await create("projects", {
+    organization: team.id,
+    name: "Second project",
+  });
+  const third = await create("projects", {
+    organization: other.id,
+    name: "Third project",
+  });
+  const outsiderHeaders = await account(outsider);
+  const outsiderTeam = await create(
+    "organizations",
+    { name: "Private team" },
+    outsiderHeaders,
+  );
+  await create(
+    "projects",
+    { organization: outsiderTeam.id, name: "Private project" },
+    outsiderHeaders,
+  );
+  const secondPath = `/?team=${team.id}&project=${second.id}`;
+  await page.goto(secondPath);
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(
+    new RegExp(`team=${team.id}&project=${second.id}$`),
+  );
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "First project", exact: true }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`team=${team.id}&project=${first.id}$`),
+  );
+  await page.goBack();
+  await expect(
+    page.getByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  await page.goForward();
+  await expect(
+    page.getByRole("heading", { name: "First project." }),
+  ).toBeVisible();
+  await page
+    .getByLabel("WORKSPACE", { exact: true })
+    .selectOption(String(other.id));
+  await expect(
+    page.getByRole("heading", { name: "Third project." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: /Team members/ }).click();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Meet your team." }),
+  ).toBeVisible();
+  await expect(page.getByLabel("WORKSPACE", { exact: true })).toHaveValue(
+    String(other.id),
+  );
+  await page.getByRole("button", { name: "Project board" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Third project." }),
+  ).toBeVisible();
+  if (testInfo.project.name === "mobile") {
+    await page.setViewportSize({ width: 320, height: 740 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth > window.innerWidth,
+      ),
+    ).toBe(false);
+  }
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: "http://127.0.0.1:5174",
+  });
+  await page.getByRole("button", { name: "Copy project link" }).click();
+  await expect(page.getByRole("status")).toContainText("Project link copied");
+  const sharedURL = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(sharedURL).search).toBe(
+    `?team=${other.id}&project=${third.id}`,
+  );
+  await page.getByRole("button", { name: "Delete project" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: /A team in place/ }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`team=${other.id}$`));
+  await page.goto(sharedURL);
+  await expect(
+    page.getByRole("heading", { name: "This workspace isn’t available." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Back to workspace" }).click();
+  await expect(
+    page.getByRole("heading", { name: "First project." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.goto(secondPath);
+  await page.getByLabel("Username").fill(outsider);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "This workspace isn’t available." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Second project." }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Back to workspace" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Private project." }),
+  ).toBeVisible();
 });

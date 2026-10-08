@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
 import { setSession } from "./lib/api";
@@ -12,6 +12,7 @@ const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status });
 
 beforeEach(() => {
+  window.history.replaceState(null, "", "/");
   sessionStorage.clear();
   localStorage.clear();
   user = { id: 1, username: "alice", email: "" };
@@ -260,4 +261,184 @@ it("returns to sign-in when the restored session has expired", async () => {
     await screen.findByRole("heading", { name: "Welcome back." }),
   ).toBeVisible();
   expect(sessionStorage.getItem("teamsync.session")).toBeNull();
+});
+
+function addSecondProject() {
+  data.projects.push({ ...data.projects[0], id: 2, name: "Second project" });
+}
+
+it("opens a non-default project directly from its URL", async () => {
+  addSecondProject();
+  window.history.replaceState(null, "", "/?team=1&project=2");
+  setSession({ access: "access", refresh: "refresh" });
+  render(<App />);
+  expect(
+    await screen.findByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("heading", { name: "Plan release" }),
+  ).not.toBeInTheDocument();
+  expect(document.title).toBe("Second project · TeamSync");
+});
+
+it("keeps a project link through sign-in", async () => {
+  const actor = userEvent.setup();
+  addSecondProject();
+  window.history.replaceState(null, "", "/?project=2");
+  render(<App />);
+  await actor.type(screen.getByLabelText("Username"), "alice");
+  await actor.type(screen.getByLabelText("Password"), "password");
+  await actor.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(
+    await screen.findByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  await waitFor(() => expect(window.location.search).toBe("?team=1&project=2"));
+});
+
+it("updates the address when switching projects and member tabs", async () => {
+  const actor = userEvent.setup();
+  addSecondProject();
+  await openWorkspace();
+  await actor.click(screen.getByRole("link", { name: "Second project" }));
+  expect(window.location.search).toBe("?team=1&project=2");
+  expect(
+    screen.getByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  await actor.click(screen.getByRole("button", { name: /Team members/ }));
+  expect(window.location.search).toBe("?team=1&project=2&view=members");
+  await actor.click(screen.getByRole("button", { name: "Project board" }));
+  expect(
+    screen.getByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+});
+
+it("responds to browser history changes and closes the old editor", async () => {
+  const actor = userEvent.setup();
+  addSecondProject();
+  await openWorkspace();
+  await actor.click(screen.getByRole("button", { name: "New task" }));
+  expect(screen.getByRole("dialog")).toBeVisible();
+  // jsdom does not perform actual browser navigation; emulate a popstate destination.
+  window.history.replaceState(null, "", "/?team=1&project=2");
+  window.dispatchEvent(new PopStateEvent("popstate"));
+  expect(
+    await screen.findByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+it("shows an unavailable screen rather than a different project for a bad link", async () => {
+  const actor = userEvent.setup();
+  window.history.replaceState(null, "", "/?team=1&project=999");
+  setSession({ access: "access", refresh: "refresh" });
+  render(<App />);
+  expect(
+    await screen.findByRole("heading", {
+      name: "This workspace isn’t available.",
+    }),
+  ).toBeVisible();
+  expect(window.location.search).toBe("?team=1&project=999");
+  expect(
+    screen.queryByRole("heading", { name: /Launch plan/ }),
+  ).not.toBeInTheDocument();
+  await actor.click(screen.getByRole("button", { name: "Back to workspace" }));
+  expect(
+    await screen.findByRole("heading", { name: /Launch plan/ }),
+  ).toBeVisible();
+});
+
+it("copies a project link without granting anyone new access", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  const writeText = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue();
+  await actor.click(screen.getByRole("button", { name: "Copy project link" }));
+  expect(writeText).toHaveBeenCalledWith(
+    `${window.location.origin}/?team=1&project=1`,
+  );
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "Project link copied",
+  );
+  writeText.mockRestore();
+});
+
+it("offers a selectable link when clipboard access fails", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  const writeText = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockRejectedValue(new Error("Denied"));
+  await actor.click(screen.getByRole("button", { name: "Copy project link" }));
+  expect(await screen.findByLabelText("Copy this project link:")).toHaveValue(
+    `${window.location.origin}/?team=1&project=1`,
+  );
+  writeText.mockRestore();
+});
+
+it("moves to another project after deleting the currently selected project", async () => {
+  const actor = userEvent.setup();
+  addSecondProject();
+  const healthy = fetchMock.getMockImplementation()!;
+  fetchMock.mockImplementation(async (path, options) => {
+    if (path === "/api/projects/1/" && options?.method === "DELETE") {
+      data.projects = data.projects.filter((project) => project.id !== 1);
+      data.tasks = [];
+      return new Response(null, { status: 204 });
+    }
+    return healthy(path, options);
+  });
+  await openWorkspace();
+  await actor.click(screen.getByRole("button", { name: "Delete project" }));
+  await actor.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }),
+  );
+  expect(
+    await screen.findByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  expect(window.location.search).toBe("?team=1&project=2");
+});
+
+it("does not redirect or close a new editor when an old save finishes after navigation", async () => {
+  const actor = userEvent.setup();
+  addSecondProject();
+  const healthy = fetchMock.getMockImplementation()!;
+  let finish!: (response: Response) => void;
+  fetchMock.mockImplementation(async (path, options) => {
+    if (path === "/api/tasks/" && options?.method === "POST") {
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    }
+    return healthy(path, options);
+  });
+  await openWorkspace();
+  await actor.click(screen.getByRole("button", { name: "New task" }));
+  await actor.type(screen.getByLabelText("Task title"), "Slow task");
+  await actor.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Create task",
+    }),
+  );
+  await waitFor(() => expect(finish).toBeTypeOf("function"));
+  act(() => {
+    window.history.replaceState(null, "", "/?team=1&project=2");
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  });
+  expect(
+    await screen.findByRole("heading", { name: "Second project." }),
+  ).toBeVisible();
+  await actor.click(screen.getByRole("button", { name: "New task" }));
+  await actor.type(screen.getByLabelText("Task title"), "New draft");
+  await act(async () => {
+    finish(json({ id: 2 }, 201));
+  });
+  await waitFor(() =>
+    expect(
+      screen.queryByText("Refreshing your workspace…"),
+    ).not.toBeInTheDocument(),
+  );
+  expect(window.location.search).toBe("?team=1&project=2");
+  expect(screen.getByRole("dialog")).toBeVisible();
+  expect(screen.getByLabelText("Task title")).toHaveValue("New draft");
 });

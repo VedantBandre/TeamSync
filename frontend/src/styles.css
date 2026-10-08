@@ -305,6 +305,7 @@ h3,
   margin: 31px 7px 8px;
 }
 .project-link {
+  text-decoration: none;
   width: 100%;
   display: flex;
   align-items: center;
@@ -1357,6 +1358,7 @@ td select {
     flex-wrap: wrap;
   }
   .project-link {
+    text-decoration: none;
     width: auto;
     max-width: 100%;
     padding: 8px 10px;
@@ -1537,5 +1539,36 @@ td select {
   *::after {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
+  }
+}
+
+.share-feedback {
+  margin-bottom: 20px;
+  padding: 12px 15px;
+  border: 1px solid #dce6d7;
+  border-radius: 8px;
+  background: #eff5e9;
+  color: #49643f;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.share-feedback input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 9px;
+  border: 1px solid #c6d4c0;
+  border-radius: 5px;
+  background: white;
+  color: #3c5537;
+  font-size: 12px;
+}
+.heading-actions {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+@media (max-width: 1100px) {
+  .page-heading {
+    flex-wrap: wrap;
   }
 }

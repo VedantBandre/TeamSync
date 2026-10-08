@@ -7,6 +7,7 @@ import {
   Folder,
   FolderPlus,
   Layers3,
+  Link,
   LayoutDashboard,
   ListTodo,
   LoaderCircle,
@@ -19,6 +20,12 @@ import {
   Users,
 } from "lucide-react";
 import { loadWorkspace, save } from "../lib/api";
+import {
+  navigateWorkspace,
+  resolveWorkspaceRoute,
+  useWorkspaceLocation,
+  workspaceLink,
+} from "../lib/navigation";
 import type {
   Membership,
   Task,
@@ -48,9 +55,11 @@ export function Workspace({
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [organizationId, setOrganizationId] = useState<number | null>(null);
-  const [projectId, setProjectId] = useState<number | null>(null);
-  const [tab, setTab] = useState<"board" | "members">("board");
+  const location = useWorkspaceLocation();
+  const [shareFeedback, setShareFeedback] = useState<{
+    projectId: number;
+    copied: boolean;
+  } | null>(null);
   const [query, setQuery] = useState("");
   const [mine, setMine] = useState(false);
   const [editor, setEditor] = useState<Editor | null>(null);
@@ -74,13 +83,35 @@ export function Workspace({
       active = false;
     };
   }, []);
-  const organization =
-    data.organizations.find((org) => org.id === organizationId) ||
-    data.organizations[0];
+  const { organization, project, tab, unavailable, canonical } =
+    resolveWorkspaceRoute(location, data);
   const projects = data.projects.filter(
     (item) => item.organization === organization?.id,
   );
-  const project = projects.find((item) => item.id === projectId) || projects[0];
+  useEffect(() => {
+    if (loaded && !unavailable) navigateWorkspace(canonical, true);
+  }, [loaded, unavailable, canonical]);
+  useEffect(() => {
+    document.title = unavailable
+      ? "Workspace unavailable · TeamSync"
+      : tab === "members"
+        ? `${organization?.name || "Your team"} · Members · TeamSync`
+        : `${project?.name || organization?.name || "Your workspace"} · TeamSync`;
+  }, [unavailable, tab, organization?.name, project?.name]);
+  useEffect(() => {
+    const reset = () => {
+      setEditor(null);
+      setQuery("");
+      setMine(false);
+      setShareFeedback(null);
+    };
+    window.addEventListener("popstate", reset);
+    window.addEventListener("teamsync:navigation", reset);
+    return () => {
+      window.removeEventListener("popstate", reset);
+      window.removeEventListener("teamsync:navigation", reset);
+    };
+  }, []);
   const members = data.memberships.filter(
     (item) => item.organization === organization?.id,
   );
@@ -100,25 +131,35 @@ export function Workspace({
     ? Math.round((completed / tasks.length) * 100)
     : 0;
 
-  async function reload(resource?: string, id?: number) {
+  async function reload(resource?: string, id?: number, deleted = false) {
     setLoading(true);
     setError(null);
     try {
       const result = await loadWorkspace();
       setData(result);
       setLoaded(true);
-      if (resource === "organizations" && id) {
-        setOrganizationId(id);
-        setProjectId(null);
-        setTab("board");
-        setQuery("");
-        setMine(false);
-      }
-      if (resource === "projects" && id) {
-        setProjectId(id);
-        setTab("board");
-        setQuery("");
-        setMine(false);
+      // A completed mutation must not redirect someone who navigated while it saved.
+      if (window.location.pathname + window.location.search === location) {
+        if (
+          deleted &&
+          !unavailable &&
+          (resource === "organizations" || resource === "memberships") &&
+          organization &&
+          !result.organizations.some((team) => team.id === organization.id)
+        ) {
+          navigateWorkspace("/", true);
+        } else if (deleted && resource === "projects" && id === project?.id) {
+          const next = result.projects.find(
+            (item) => item.organization === organization?.id,
+          );
+          navigateWorkspace(workspaceLink(organization?.id, next?.id), true);
+        } else if (!deleted && resource === "organizations" && id) {
+          navigateWorkspace(workspaceLink(id));
+        } else if (!deleted && resource === "projects" && id) {
+          const created = result.projects.find((item) => item.id === id);
+          if (created)
+            navigateWorkspace(workspaceLink(created.organization, created.id));
+        }
       }
     } catch (failure) {
       setError(failure);
@@ -160,17 +201,29 @@ export function Workspace({
     }
   }
   function selectTeam(value: number) {
-    setOrganizationId(value);
-    setProjectId(null);
-    setTab("board");
-    setQuery("");
-    setMine(false);
+    const first = data.projects.find((item) => item.organization === value);
+    navigateWorkspace(workspaceLink(value, first?.id));
   }
   function selectProject(value: number) {
-    setProjectId(value);
-    setTab("board");
-    setQuery("");
-    setMine(false);
+    navigateWorkspace(workspaceLink(organization?.id, value));
+  }
+  function selectTab(value: "board" | "members") {
+    navigateWorkspace(workspaceLink(organization?.id, project?.id, value));
+  }
+  const projectLink = project
+    ? new URL(
+        workspaceLink(project.organization, project.id),
+        window.location.origin,
+      ).href
+    : "";
+  async function copyProjectLink() {
+    if (!project) return;
+    try {
+      await navigator.clipboard.writeText(projectLink);
+      setShareFeedback({ projectId: project.id, copied: true });
+    } catch {
+      setShareFeedback({ projectId: project.id, copied: false });
+    }
   }
   const openTask = (status: TaskStatus = "TODO") =>
     setEditor({ kind: "task", status });
@@ -188,12 +241,17 @@ export function Workspace({
           <label className="small-label" htmlFor="team-select">
             WORKSPACE
           </label>
-          {organization ? (
+          {data.organizations.length > 0 ? (
             <select
               id="team-select"
-              value={organization.id}
+              value={organization?.id || ""}
               onChange={(event) => selectTeam(Number(event.target.value))}
             >
+              {!organization && (
+                <option value="" disabled>
+                  Choose a team
+                </option>
+              )}
               {data.organizations.map((org) => (
                 <option key={org.id} value={org.id}>
                   {org.name}
@@ -215,14 +273,14 @@ export function Workspace({
         <nav aria-label="Workspace navigation">
           <button
             className={`nav-item ${tab === "board" ? "active" : ""}`}
-            onClick={() => setTab("board")}
+            onClick={() => selectTab("board")}
           >
             <LayoutDashboard size={18} />
             Project board
           </button>
           <button
             className={`nav-item ${tab === "members" ? "active" : ""}`}
-            onClick={() => setTab("members")}
+            onClick={() => selectTab("members")}
             disabled={!organization}
           >
             <Users size={18} />
@@ -247,15 +305,30 @@ export function Workspace({
         </div>
         <nav className="project-nav" aria-label="Projects">
           {projects.map((item) => (
-            <button
+            <a
               key={item.id}
               className={`project-link ${item.id === project?.id && tab === "board" ? "selected" : ""}`}
-              onClick={() => selectProject(item.id)}
+              href={workspaceLink(item.organization, item.id)}
+              aria-current={
+                item.id === project?.id && tab === "board" ? "page" : undefined
+              }
+              onClick={(event) => {
+                if (
+                  event.button === 0 &&
+                  !event.metaKey &&
+                  !event.ctrlKey &&
+                  !event.shiftKey &&
+                  !event.altKey
+                ) {
+                  event.preventDefault();
+                  selectProject(item.id);
+                }
+              }}
             >
               <span className="project-dot" />
               <span>{item.name}</span>
               <ChevronRight size={14} />
-            </button>
+            </a>
           ))}
           {!projects.length && (
             <p className="sidebar-empty">
@@ -336,6 +409,24 @@ export function Workspace({
               </p>
               <button className="button primary" onClick={() => void reload()}>
                 Try again
+              </button>
+            </div>
+          ) : unavailable ? (
+            <div className="large-empty">
+              <span className="empty-illustration">
+                <Folder size={34} />
+              </span>
+              <h1>This workspace isn’t available.</h1>
+              <p>
+                The link may be incorrect, the project may have been deleted, or
+                this account may not have access. Ask a team admin to check your
+                membership.
+              </p>
+              <button
+                className="button primary"
+                onClick={() => navigateWorkspace("/")}
+              >
+                Back to workspace
               </button>
             </div>
           ) : !organization ? (
@@ -559,6 +650,13 @@ export function Workspace({
                   </p>
                 </div>
                 <div className="heading-actions">
+                  <button
+                    className="button secondary"
+                    onClick={() => void copyProjectLink()}
+                  >
+                    <Link size={16} />
+                    Copy project link
+                  </button>
                   {isAdmin && (
                     <>
                       <button
@@ -598,6 +696,25 @@ export function Workspace({
                   </button>
                 </div>
               </section>
+              {shareFeedback?.projectId === project.id && (
+                <div className="share-feedback" role="status">
+                  {shareFeedback.copied ? (
+                    "Project link copied. Teammates with access can open it."
+                  ) : (
+                    <>
+                      <label htmlFor="project-link">
+                        Copy this project link:
+                      </label>
+                      <input
+                        id="project-link"
+                        value={projectLink}
+                        readOnly
+                        onFocus={(event) => event.currentTarget.select()}
+                      />
+                    </>
+                  )}
+                </div>
+              )}
               <section className="project-summary" aria-label="Project summary">
                 <div className="summary-item">
                   <span className="summary-icon">
@@ -720,7 +837,9 @@ export function Workspace({
           organization={organization}
           project={project}
           members={members}
-          onClose={() => setEditor(null)}
+          onClose={() =>
+            setEditor((current) => (current === editor ? null : current))
+          }
           onSaved={reload}
         />
       )}
