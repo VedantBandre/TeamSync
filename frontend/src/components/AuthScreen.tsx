@@ -190,7 +190,7 @@ export function AuthScreen({ onLogin }: { onLogin: (user: User) => void }) {
               </p>
               {!register && (
                 <button
-                  className="text-button"
+                  className="text-button auth-forgot"
                   disabled={busy}
                   onClick={() => setForgot(true)}
                 >
