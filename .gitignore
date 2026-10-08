@@ -31,3 +31,9 @@ yarn-error.log*
 # env
 .env
 .env.local
+
+# Frontend checks and isolated browser-test database
+*.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/
+backend/.e2e.sqlite3*

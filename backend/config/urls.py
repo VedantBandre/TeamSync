@@ -18,6 +18,8 @@ from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
+from accounts.views import RegisterView, CurrentUserView
+
 from organizations.views import OrganizationViewSet, MembershipViewSet
 from projects.views import ProjectViewSet
 from tasks.views import TaskViewSet
@@ -36,6 +38,8 @@ urlpatterns = [
 ]
 
 urlpatterns += [
+    path("api/register/", RegisterView.as_view(), name="register"),
+    path("api/me/", CurrentUserView.as_view(), name="current-user"),
     path("api/token/", TokenObtainPairView.as_view()),
     path("api/token/refresh/", TokenRefreshView.as_view()),
 ]
