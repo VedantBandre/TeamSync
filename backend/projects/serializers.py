@@ -9,8 +9,8 @@ from .models import Project
 class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
-        fields = ["id", "organization", "name", "description", "created_at"]
-        read_only_fields = ["created_at"]
+        fields = ["id", "organization", "name", "description", "created_at", "archived_at"]
+        read_only_fields = ["created_at", "archived_at"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -21,6 +21,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             )
 
     def validate(self, attrs):
+        if self.instance and self.instance.archived_at:
+            raise serializers.ValidationError({"detail": "This project is archived. Restore it before making changes."})
         if self.instance and "organization" in attrs:
             if attrs["organization"].pk != self.instance.organization_id:
                 raise serializers.ValidationError({"organization": "Projects cannot move between organizations."})

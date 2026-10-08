@@ -15,6 +15,7 @@ import { priorities, statuses } from "../lib/types";
 
 export function TaskBoard({
   tasks,
+  readOnly = false,
   members,
   pending,
   onDiscuss,
@@ -24,6 +25,7 @@ export function TaskBoard({
   onCreate,
 }: {
   tasks: Task[];
+  readOnly?: boolean;
   members: Membership[];
   pending: number | null;
   onDiscuss: (task: Task) => void;
@@ -44,7 +46,7 @@ export function TaskBoard({
           <section
             className={`board-column column-${status.value.toLowerCase()} ${over === status.value ? "drop-target" : ""}`}
             onDragOver={(event) => {
-              if (!dragged || pending !== null) return;
+              if (!dragged || pending !== null || readOnly) return;
               event.preventDefault();
               event.dataTransfer.dropEffect = "move";
               setOver(status.value);
@@ -61,6 +63,7 @@ export function TaskBoard({
               event.preventDefault();
               if (
                 dragged &&
+                !readOnly &&
                 pending === null &&
                 dragged.status !== status.value
               )
@@ -81,7 +84,7 @@ export function TaskBoard({
                 className="icon-button"
                 aria-label={`Create task from ${status.label}`}
                 onClick={() => onCreate(status.value)}
-                disabled={pending !== null}
+                disabled={pending !== null || readOnly}
               >
                 <Plus size={17} />
               </button>
@@ -103,11 +106,11 @@ export function TaskBoard({
                       <span className="task-id">
                         <span
                           className="task-drag-handle"
-                          draggable={pending === null}
+                          draggable={pending === null && !readOnly}
                           title={`Drag ${task.title} to another column`}
                           aria-hidden="true"
                           onDragStart={(event) => {
-                            if (pending !== null) {
+                            if (pending !== null || readOnly) {
                               event.preventDefault();
                               return;
                             }
@@ -143,7 +146,7 @@ export function TaskBoard({
                           className="icon-button"
                           aria-label={`Edit ${task.title}`}
                           onClick={() => onEdit(task)}
-                          disabled={pending !== null}
+                          disabled={pending !== null || readOnly}
                         >
                           <Pencil size={14} />
                         </button>
@@ -151,7 +154,7 @@ export function TaskBoard({
                           className="icon-button"
                           aria-label={`Delete ${task.title}`}
                           onClick={() => onDelete(task)}
-                          disabled={pending !== null}
+                          disabled={pending !== null || readOnly}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -212,7 +215,7 @@ export function TaskBoard({
                       onChange={(event) =>
                         onStatus(task, event.target.value as TaskStatus)
                       }
-                      disabled={pending !== null}
+                      disabled={pending !== null || readOnly}
                     >
                       {statuses.map((choice) => (
                         <option value={choice.value} key={choice.value}>
@@ -238,7 +241,7 @@ export function TaskBoard({
               <button
                 className="add-card"
                 onClick={() => onCreate(status.value)}
-                disabled={pending !== null}
+                disabled={pending !== null || readOnly}
               >
                 <Plus size={16} />
                 Add task

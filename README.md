@@ -190,7 +190,7 @@ and server-side board filters are future improvements for larger workspaces.
 
 The backend workflow, frontend workspace, project navigation, task controls, and
 task discussion are integrated into `main`. Start new development branches from
-an updated `main`; the invitation feature is on `dev/team-invitations`.
+an updated `main`; the invitation feature has also merged. Project archiving is on `dev/project-archiving`.
 
 ### Task controls
 
@@ -280,3 +280,31 @@ locks plus a conditional claim keep acceptance and membership creation atomic.
 SQLite does not provide production row locking; verify concurrent joins on the
 production database before deployment. Treat invitation URLs as credentials and
 exclude their query strings from production access logs and analytics.
+
+
+### Project archive and restore
+
+Admins can confirm **Archive project** on a board, then find it in **Archived
+projects**. Archiving preserves tasks, comments, and activity; existing project
+links still open a read-only board. Archived projects are omitted from active
+project navigation and automatic board selection. Team members can read archived
+work, while only admins can restore it. Restoration returns the project to the
+active list and re-enables edits.
+
+- `POST /api/projects/<id>/archive/` archives a project (admin only).
+- `POST /api/projects/<id>/restore/` restores it (admin only).
+- Both return the project and are idempotent. `archived_at` is read-only in normal
+  project requests. List/detail reads include archived projects within the same
+  membership scope.
+
+The API rejects archived project edits, task creation/update/deletion, and comment
+creation/update/deletion. Project rows are locked before content writes on
+row-locking databases to coordinate them with archive/restore. SQLite is the local
+development database; production concurrency should be verified on the chosen
+production database. Membership removal still unassigns that user's tasks,
+including archived ones, and records the access cleanup in task history.
+
+Permanent deletion remains a separate confirmed admin action and removes the
+project's tasks, comments, and history. Archiving is the option for preserving work.
+Apply migrations after pulling this feature, including
+`projects/0002_project_archived_at`.

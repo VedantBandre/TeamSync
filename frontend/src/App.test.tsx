@@ -29,6 +29,7 @@ beforeEach(() => {
         id: 1,
         name: "Launch plan",
         description: "Build it together.",
+        archived_at: null,
         organization: 1,
         created_at: "2026-10-01",
       },
@@ -73,6 +74,12 @@ beforeEach(() => {
     if (url === "/api/tasks/1/" && options?.method === "DELETE") {
       data.tasks = data.tasks.filter((task) => task.id !== 1);
       return new Response(null, { status: 204 });
+    }
+    if (/^\/api\/projects\/1\/(archive|restore)\/$/.test(url)) {
+      data.projects[0].archived_at = url.includes("/archive/")
+        ? "2026-10-08T12:00:00Z"
+        : null;
+      return json(data.projects[0]);
     }
     const resource = url.split("/")[2] as keyof WorkspaceData;
     return json(data[resource] || {}, 200);
@@ -466,4 +473,68 @@ it("edits a task priority and filters the saved result", async () => {
   ).not.toBeInTheDocument();
   await actor.click(screen.getByRole("button", { name: "Clear filters" }));
   expect(screen.getByRole("heading", { name: "Plan release" })).toBeVisible();
+});
+
+it("archives with confirmation, preserves the board, and restores from the archive list", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  await actor.click(screen.getByRole("button", { name: "Archive project" }));
+  await actor.click(
+    within(screen.getByRole("dialog")).getByRole("button", { name: "Cancel" }),
+  );
+  expect(data.projects[0].archived_at).toBeNull();
+  await actor.click(screen.getByRole("button", { name: "Archive project" }));
+  await actor.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Archive project",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "archived and read-only",
+  );
+  expect(screen.getByRole("heading", { name: "Plan release" })).toBeVisible();
+  expect(
+    screen.queryByRole("button", { name: "New task" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByLabelText("Status of Plan release")).toBeDisabled();
+  await actor.click(screen.getByRole("button", { name: /Archived projects/ }));
+  await actor.click(
+    screen.getByRole("button", { name: "Restore Launch plan" }),
+  );
+  await actor.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Restore project",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await actor.click(screen.getByRole("link", { name: "Launch plan" }));
+  expect(screen.getByRole("button", { name: "New task" })).toBeEnabled();
+  expect(screen.getByLabelText("Status of Plan release")).toBeEnabled();
+});
+
+it("keeps the confirmation open when archiving fails", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  const original = fetchMock.getMockImplementation()!;
+  fetchMock.mockImplementation((path, options) =>
+    String(path).endsWith("/archive/")
+      ? Promise.resolve(json({ detail: "Please retry later." }, 503))
+      : original(path, options),
+  );
+  await actor.click(screen.getByRole("button", { name: "Archive project" }));
+  await actor.click(
+    within(screen.getByRole("dialog")).getByRole("button", {
+      name: "Archive project",
+    }),
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Please retry later.",
+  );
+  expect(screen.getByRole("dialog")).toBeVisible();
+  expect(data.projects[0].archived_at).toBeNull();
 });

@@ -8,10 +8,18 @@ const data: WorkspaceData = {
     { id: 2, name: "Other team", created_by: 1, created_at: "" },
   ],
   projects: [
-    { id: 10, name: "First", organization: 1, description: "", created_at: "" },
+    {
+      id: 10,
+      name: "First",
+      organization: 1,
+      description: "",
+      created_at: "",
+      archived_at: null,
+    },
     {
       id: 20,
       name: "Second",
+      archived_at: null,
       organization: 2,
       description: "",
       created_at: "",
@@ -95,4 +103,22 @@ describe("workspace links", () => {
       }),
     ).toMatchObject({ unavailable: false, canonical: "/" });
   });
+});
+
+it("keeps explicit archived links readable but skips them as defaults", () => {
+  const archived = {
+    ...data,
+    projects: data.projects.map((project) => ({
+      ...project,
+      archived_at: "2026-10-08",
+    })),
+  };
+  expect(resolveWorkspaceRoute("/", archived).project).toBeUndefined();
+  expect(resolveWorkspaceRoute("/?project=10", archived)).toMatchObject({
+    project: { id: 10 },
+    unavailable: false,
+  });
+  expect(
+    resolveWorkspaceRoute("/?team=1&view=archived", archived),
+  ).toMatchObject({ tab: "archived", unavailable: false });
 });

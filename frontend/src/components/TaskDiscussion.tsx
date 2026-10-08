@@ -46,10 +46,12 @@ function appendPage<T extends { id: number }>(
 
 export function TaskDiscussion({
   task,
+  readOnly = false,
   user,
   onClose,
 }: {
   task: Task;
+  readOnly?: boolean;
   user: User;
   onClose: () => void;
 }) {
@@ -125,7 +127,7 @@ export function TaskDiscussion({
     }
   }
   async function mutate(action: "add" | "edit" | "delete", id?: number) {
-    if (busy || loading) return;
+    if (busy || loading || readOnly) return;
     setBusy(true);
     setError(null);
     setNotice("");
@@ -201,6 +203,11 @@ export function TaskDiscussion({
     <Dialog title={`Discussion · ${task.title}`} onClose={onClose} busy={busy}>
       <div className="discussion">
         <p className="discussion-intro">TS-{task.id} · Comments and activity</p>
+        {readOnly && (
+          <p className="archive-banner">
+            This project is archived. Comments and activity are read-only.
+          </p>
+        )}
         <ErrorNotice error={error} />
         <div className="discussion-refresh">
           <button
@@ -225,7 +232,7 @@ export function TaskDiscussion({
           <h3 id="comments-heading">
             Comments{comments ? ` (${comments.count})` : ""}
           </h3>
-          {comments && (
+          {comments && !readOnly && (
             <form onSubmit={submit} className="comment-form">
               <label htmlFor="comment-body">Add a comment</label>
               <textarea
@@ -255,7 +262,7 @@ export function TaskDiscussion({
                   <strong>{comment.author_name}</strong>
                   <Timestamp value={comment.created_at} />
                 </div>
-                {editing === comment.id ? (
+                {editing === comment.id && !readOnly ? (
                   <form
                     className="comment-form"
                     onSubmit={(event) => {
@@ -300,50 +307,52 @@ export function TaskDiscussion({
                     Edited <Timestamp value={comment.updated_at} />
                   </span>
                 )}
-                {comment.author === user.id && editing !== comment.id && (
-                  <div className="comment-actions">
-                    {deleting === comment.id ? (
-                      <>
-                        <span>Delete this comment?</span>
-                        <button
-                          className="text-button danger-text"
-                          disabled={busy || loading}
-                          onClick={() => void mutate("delete", comment.id)}
-                        >
-                          Confirm delete
-                        </button>
-                        <button
-                          className="text-button"
-                          disabled={busy}
-                          onClick={() => setDeleting(null)}
-                        >
-                          Keep comment
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          className="text-button"
-                          disabled={busy || loading}
-                          onClick={() => {
-                            setEditing(comment.id);
-                            setEditBody(comment.body);
-                            setDeleting(null);
-                          }}
-                        >
-                          Edit comment
-                        </button>
-                        <button
-                          className="text-button danger-text"
-                          disabled={busy || loading}
-                          onClick={() => setDeleting(comment.id)}
-                        >
-                          Delete comment
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                {!readOnly &&
+                  comment.author === user.id &&
+                  editing !== comment.id && (
+                    <div className="comment-actions">
+                      {deleting === comment.id ? (
+                        <>
+                          <span>Delete this comment?</span>
+                          <button
+                            className="text-button danger-text"
+                            disabled={busy || loading}
+                            onClick={() => void mutate("delete", comment.id)}
+                          >
+                            Confirm delete
+                          </button>
+                          <button
+                            className="text-button"
+                            disabled={busy}
+                            onClick={() => setDeleting(null)}
+                          >
+                            Keep comment
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="text-button"
+                            disabled={busy || loading}
+                            onClick={() => {
+                              setEditing(comment.id);
+                              setEditBody(comment.body);
+                              setDeleting(null);
+                            }}
+                          >
+                            Edit comment
+                          </button>
+                          <button
+                            className="text-button danger-text"
+                            disabled={busy || loading}
+                            onClick={() => setDeleting(comment.id)}
+                          >
+                            Delete comment
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
               </article>
             ))}
           </div>

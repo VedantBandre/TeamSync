@@ -4,7 +4,7 @@ import type { Organization, Project, WorkspaceData } from "./types";
 export interface WorkspaceRoute {
   teamId: number | null;
   projectId: number | null;
-  tab: "board" | "members";
+  tab: "board" | "members" | "archived";
   invalid: boolean;
 }
 
@@ -30,13 +30,18 @@ export function parseWorkspaceRoute(location: string): WorkspaceRoute {
   const views = url.searchParams.getAll("view");
   if (
     views.length > 1 ||
-    (views.length && !["board", "members"].includes(views[0]))
+    (views.length && !["board", "members", "archived"].includes(views[0]))
   )
     invalid = true;
   return {
     teamId,
     projectId,
-    tab: views[0] === "members" ? "members" : "board",
+    tab:
+      views[0] === "members"
+        ? "members"
+        : views[0] === "archived"
+          ? "archived"
+          : "board",
     invalid,
   };
 }
@@ -49,7 +54,7 @@ export function workspaceLink(
   const params = new URLSearchParams();
   if (teamId) params.set("team", String(teamId));
   if (projectId) params.set("project", String(projectId));
-  if (tab === "members") params.set("view", tab);
+  if (tab !== "board") params.set("view", tab);
   return params.size ? `/?${params}` : "/";
 }
 
@@ -83,7 +88,9 @@ export function resolveWorkspaceRoute(
     );
   const project =
     requestedProject ??
-    data.projects.find((item) => item.organization === organization?.id);
+    data.projects.find(
+      (item) => item.organization === organization?.id && !item.archived_at,
+    );
   return {
     organization: unavailable ? undefined : organization,
     project: unavailable ? undefined : project,
