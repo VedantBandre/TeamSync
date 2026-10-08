@@ -13,7 +13,8 @@ class EnvironmentTests(SimpleTestCase):
             "DJANGO_SECRET_KEY": "production-test-key-only-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ",
             "DJANGO_ALLOWED_HOSTS": "api.example.com",
             "DB_NAME": "teamsync", "DB_USER": "teamsync", "DB_PASSWORD": "test-only",
-            "DB_HOST": "db.example.com", **overrides,
+            "DB_HOST": "db.example.com", "FRONTEND_ORIGIN": "https://app.example.com",
+            "DEFAULT_FROM_EMAIL": "teamsync@example.com", "RESEND_API_KEY": "test-only", **overrides,
         }
 
     def test_local_defaults_use_sqlite_and_explicit_cors_origins(self):
@@ -36,13 +37,14 @@ class EnvironmentTests(SimpleTestCase):
         self.assertEqual(db["OPTIONS"]["sslmode"], "require")
 
     def test_production_rejects_missing_secrets_hosts_and_database_credentials(self):
-        for name in ("DJANGO_SECRET_KEY", "DJANGO_ALLOWED_HOSTS", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_HOST"):
+        for name in ("DJANGO_SECRET_KEY", "DJANGO_ALLOWED_HOSTS", "DB_NAME", "DB_USER", "DB_PASSWORD", "DB_HOST", "FRONTEND_ORIGIN", "DEFAULT_FROM_EMAIL", "RESEND_API_KEY"):
             with self.subTest(name=name), self.assertRaises(ImproperlyConfigured):
                 configuration(Path("/app"), self.production(**{name: ""}))
 
     def test_production_rejects_unsafe_configuration(self):
         for name, value in (
-            ("DJANGO_DEBUG", "true"), ("DJANGO_SECRET_KEY", "a" * 60),
+            ("DJANGO_DEBUG", "true"), ("FRONTEND_ORIGIN", "http://app.example.com"),
+            ("EMAIL_DELIVERY", "file"), ("DJANGO_SECRET_KEY", "a" * 60),
             ("DJANGO_ALLOWED_HOSTS", "*"), ("DB_ENGINE", "sqlite"),
             ("DB_SSLMODE", "disable"), ("DB_SSLMODE", "prefer"),
             ("DJANGO_CORS_ALLOWED_ORIGINS", "http://app.example.com"),
@@ -70,3 +72,20 @@ class EnvironmentTests(SimpleTestCase):
     def test_development_can_use_postgresql_without_tls(self):
         settings = configuration(Path("/app"), self.production(DJANGO_ENV="development", DB_ENGINE="postgresql"))
         self.assertEqual(settings["DATABASES"]["default"]["OPTIONS"]["sslmode"], "disable")
+
+
+class HealthTests(SimpleTestCase):
+    def test_health_does_not_expose_database_details(self):
+        from unittest.mock import patch
+        from django.db import DatabaseError
+        from django.test import RequestFactory
+        from .health import health
+        with patch("config.health.connection"):
+            response = health(RequestFactory().get("/health/"))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response["Cache-Control"], "no-store")
+        with patch("config.health.connection") as database:
+            database.cursor.side_effect = DatabaseError("private-host-credentials")
+            response = health(RequestFactory().get("/health/"))
+            self.assertEqual(response.status_code, 503)
+            self.assertNotIn(b"private", response.content)

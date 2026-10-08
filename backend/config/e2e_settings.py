@@ -8,3 +8,7 @@ DATABASES = {
     }
 }
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+AUTH_RATE_LIMITS = {}
+EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
+EMAIL_FILE_PATH = BASE_DIR / ".e2e-emails"
+FRONTEND_ORIGIN = "http://127.0.0.1:5174"

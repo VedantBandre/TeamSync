@@ -1,7 +1,8 @@
 # Deployment foundation
 
 This milestone supplies validated configuration and database checks. Hosting,
-email delivery, backups, and public release are still separate work.
+live email delivery, backups, and public release require provider setup.
+See [the Vercel/Render/Resend guide](VERCEL_RENDER.md) for the prepared hosting configuration.
 
 ## Environment settings
 
@@ -25,6 +26,9 @@ Production requires:
 | `DB_SSLMODE` | `require` by default; `verify-ca`/`verify-full` also supported |
 | `DJANGO_CORS_ALLOWED_ORIGINS` | HTTPS frontend origins if frontend/API origins differ |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Explicit HTTPS origins for cross-origin session/admin forms, if needed |
+| `FRONTEND_ORIGIN` | One exact HTTPS frontend origin for recovery links |
+| `DEFAULT_FROM_EMAIL` | Verified Resend sending address |
+| `RESEND_API_KEY` | Private sending key, entered in Render |
 | `DJANGO_TRUST_PROXY` | `true` only for a trusted proxy that strips/replaces incoming `X-Forwarded-Proto` |
 
 `DJANGO_DEBUG` defaults to false in production and cannot be enabled there. Unsafe
@@ -74,8 +78,8 @@ migrations and runs Django's deployment checks with dummy production variables.
 This checks configuration and database compatibility; it does not verify your
 provider's TLS, backups, reverse proxy, or concurrent production workloads.
 
-Before public launch, complete the next roadmap milestones: authentication abuse
-protection/account recovery, staging checks on the actual database, backups with
+Before public launch, complete the next roadmap milestones: live email delivery,
+staging checks on the actual database, backups with
 a tested restore, and monitoring. Deploy database migrations once per release
 before starting new application workers. Record a rollback/data recovery plan;
 changing configuration alone is not a SQLite-to-PostgreSQL data migration.

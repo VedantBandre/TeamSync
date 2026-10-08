@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Layers3, LoaderCircle } from "lucide-react";
-import { clearSession, hasSession, request } from "./lib/api";
+import { clearSession, hasSession, logout, request } from "./lib/api";
 import type { User } from "./lib/types";
+import { RecoveryConfirmation, type RecoveryLink } from "./components/Recovery";
 import { AuthScreen } from "./components/AuthScreen";
 import { ErrorNotice } from "./components/Form";
 import { AcceptInvitation } from "./components/Invitations";
@@ -9,6 +10,25 @@ import { useWorkspaceLocation } from "./lib/navigation";
 import { Workspace } from "./components/Workspace";
 
 export default function App() {
+  const [recoveryLink, setRecoveryLink] = useState<RecoveryLink | null>(() => {
+    const params = new URLSearchParams(window.location.hash.slice(1));
+    const action = params.get("action");
+    return action === "reset" || action === "verify"
+      ? {
+          action,
+          token: params.get("token") || "",
+          uid: params.get("uid") || "",
+        }
+      : null;
+  });
+  useEffect(() => {
+    if (recoveryLink)
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+  }, [recoveryLink]);
   const location = useWorkspaceLocation();
   const inviteParams = new URL(location, window.location.origin).searchParams;
   const inviteValues = inviteParams.getAll("invite");
@@ -47,6 +67,21 @@ export default function App() {
       active = false;
     };
   }, [attempt]);
+  const signOut = () => {
+    void logout().catch(setError);
+  };
+  if (recoveryLink)
+    return (
+      <RecoveryConfirmation
+        link={recoveryLink}
+        onClose={() => {
+          setRecoveryLink(null);
+          setError(null);
+          setRestoring(hasSession());
+          setAttempt((value) => value + 1);
+        }}
+      />
+    );
   if (restoring || error)
     return (
       <main className="connection-screen">
@@ -86,10 +121,10 @@ export default function App() {
         key={`${user.id}:${inviteToken}`}
         token={inviteToken}
         user={user}
-        onLogout={clearSession}
+        onLogout={signOut}
       />
     ) : (
-      <Workspace user={user} onUserChanged={setUser} onLogout={clearSession} />
+      <Workspace user={user} onUserChanged={setUser} onLogout={signOut} />
     )
   ) : (
     <AuthScreen

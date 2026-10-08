@@ -92,6 +92,21 @@ def configuration(base_dir, environ=None):
         "SECURE_REFERRER_POLICY": "no-referrer",
         "STATIC_ROOT": base_dir / "staticfiles",
     }
+    frontend = origins("FRONTEND_ORIGIN", "" if production else "http://127.0.0.1:5173")
+    if len(frontend) != 1:
+        raise ImproperlyConfigured("FRONTEND_ORIGIN must be one explicit frontend origin.")
+    delivery = env.get("EMAIL_DELIVERY", "resend" if production else "file")
+    if delivery not in ("file", "resend") or (production and delivery != "resend"):
+        raise ImproperlyConfigured("Production requires EMAIL_DELIVERY=resend.")
+    sender = env.get("DEFAULT_FROM_EMAIL", "" if production else "teamsync@localhost")
+    if not sender or "\n" in sender or "\r" in sender:
+        raise ImproperlyConfigured("DEFAULT_FROM_EMAIL is required and cannot contain newlines.")
+    config.update({
+        "FRONTEND_ORIGIN": frontend[0], "DEFAULT_FROM_EMAIL": sender,
+        "EMAIL_BACKEND": "accounts.email_backend.ResendBackend" if delivery == "resend" else "django.core.mail.backends.filebased.EmailBackend",
+        "EMAIL_FILE_PATH": base_dir / ".emails",
+        "RESEND_API_KEY": required("RESEND_API_KEY") if delivery == "resend" else "",
+    })
     # Opt in only when a trusted proxy strips incoming X-Forwarded-Proto.
     if boolean("DJANGO_TRUST_PROXY", False):
         config["SECURE_PROXY_SSL_HEADER"] = ("HTTP_X_FORWARDED_PROTO", "https")

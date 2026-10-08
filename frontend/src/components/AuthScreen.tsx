@@ -2,12 +2,14 @@ import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, Check, Layers3 } from "lucide-react";
 import { login, request } from "../lib/api";
 import type { User } from "../lib/types";
+import { ForgotPassword } from "./Recovery";
 import { ErrorNotice, Field, SubmitButton } from "./Form";
 
 export function AuthScreen({ onLogin }: { onLogin: (user: User) => void }) {
   useEffect(() => {
     document.title = "Sign in · TeamSync";
   }, []);
+  const [forgot, setForgot] = useState(false);
   const [register, setRegister] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -98,86 +100,105 @@ export function AuthScreen({ onLogin }: { onLogin: (user: User) => void }) {
       </section>
       <section className="auth-form-section">
         <div className="auth-form-card">
-          <span className="small-label">
-            YOUR WORKSPACE, READY WHEN YOU ARE
-          </span>
-          <h2>{register ? "Start working together." : "Welcome back."}</h2>
-          <p className="muted">
-            {register
-              ? "Create your account, then bring your team along."
-              : "Sign in and pick up where your team left off."}
-          </p>
-          {registered && (
-            <p role="status" className="success-notice">
-              Your account is ready. Sign in to create or join a team.
-            </p>
-          )}
-          <form
-            onSubmit={submit}
-            aria-label={register ? "Create account" : "Sign in"}
-          >
-            <ErrorNotice error={error} />
-            <Field label="Username" name="username" error={error}>
-              <input
-                id="username"
-                name="username"
-                required
-                maxLength={150}
-                autoComplete="username"
-                autoFocus
-                disabled={busy}
-                aria-describedby="username-error"
-              />
-            </Field>
-            {register && (
-              <Field label="Email (optional)" name="email" error={error}>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  disabled={busy}
-                  aria-describedby="email-error"
-                />
-              </Field>
-            )}
-            <Field label="Password" name="password" error={error}>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autoComplete={register ? "new-password" : "current-password"}
-                disabled={busy}
-                aria-describedby="password-error"
-              />
-            </Field>
-            {register && (
-              <p className="form-hint">
-                Use at least 8 characters. Avoid common passwords and your
-                username.
+          {forgot ? (
+            <ForgotPassword onBack={() => setForgot(false)} />
+          ) : (
+            <>
+              <span className="small-label">
+                YOUR WORKSPACE, READY WHEN YOU ARE
+              </span>
+              <h2>{register ? "Start working together." : "Welcome back."}</h2>
+              <p className="muted">
+                {register
+                  ? "Create your account, then bring your team along."
+                  : "Sign in and pick up where your team left off."}
               </p>
-            )}
-            <SubmitButton busy={busy}>
-              {register ? "Create account" : "Sign in"}
-              <ArrowRight size={17} />
-            </SubmitButton>
-          </form>
-          <p className="auth-switch">
-            {register ? "Already have an account?" : "New to TeamSync?"}{" "}
-            <button
-              className="text-button"
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setRegister(!register);
-                setError(null);
-                setRegistered(false);
-              }}
-            >
-              {register ? "Sign in" : "Create an account"}
-            </button>
-          </p>
+              {registered && (
+                <p role="status" className="success-notice">
+                  Your account is ready. Sign in, then verify a recovery email
+                  in My Account.
+                </p>
+              )}
+              <form
+                onSubmit={submit}
+                aria-label={register ? "Create account" : "Sign in"}
+              >
+                <ErrorNotice error={error} />
+                <Field label="Username" name="username" error={error}>
+                  <input
+                    id="username"
+                    name="username"
+                    required
+                    maxLength={150}
+                    autoComplete="username"
+                    autoFocus
+                    disabled={busy}
+                    aria-describedby="username-error"
+                  />
+                </Field>
+                {register && (
+                  <Field label="Email (optional)" name="email" error={error}>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      disabled={busy}
+                      aria-describedby="email-error"
+                    />
+                  </Field>
+                )}
+                <Field label="Password" name="password" error={error}>
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    maxLength={256}
+                    required
+                    autoComplete={
+                      register ? "new-password" : "current-password"
+                    }
+                    disabled={busy}
+                    aria-describedby="password-error"
+                  />
+                </Field>
+                {register && (
+                  <p className="form-hint">
+                    Use at least 8 characters. Avoid common passwords and your
+                    username.
+                  </p>
+                )}
+                <SubmitButton busy={busy}>
+                  {register ? "Create account" : "Sign in"}
+                  <ArrowRight size={17} />
+                </SubmitButton>
+              </form>
+              <p className="auth-switch">
+                {register ? "Already have an account?" : "New to TeamSync?"}{" "}
+                <button
+                  className="text-button"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setRegister(!register);
+                    setError(null);
+                    setRegistered(false);
+                  }}
+                >
+                  {register ? "Sign in" : "Create an account"}
+                </button>
+              </p>
+              {!register && (
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => setForgot(true)}
+                >
+                  Forgot password?
+                </button>
+              )}
+            </>
+          )}
         </div>
       </section>
     </main>

@@ -66,4 +66,7 @@ jobs:
           DJANGO_ENV: production
           DJANGO_SECRET_KEY: ci-check-only-0123456789-ABCDEFGHIJKLMNOPQRSTUVWXYZ-abcdefghijklmnopqrstuvwxyz
           DJANGO_ALLOWED_HOSTS: api.example.com
+          FRONTEND_ORIGIN: https://app.example.com
+          DEFAULT_FROM_EMAIL: teamsync@example.com
+          RESEND_API_KEY: ci-check-only
           DB_SSLMODE: require

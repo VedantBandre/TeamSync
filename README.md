@@ -62,8 +62,8 @@ the existing `user` ID field is unchanged.
 
 Tokens are kept in the current tab's session storage. Expired access tokens are
 refreshed automatically; invalid refresh tokens return the user to sign-in.
-Signing out clears this tab's tokens. It does not revoke already issued tokens
-on the server. No sample accounts or project data are inserted into your local
+Signing out revokes this login session on the server and clears this tab's tokens.
+Password changes and resets revoke all of the account's sessions. No sample accounts or project data are inserted into your local
 development database.
 
 The frontend includes responsive layouts, keyboard-accessible native dialogs,
@@ -187,7 +187,7 @@ protection, email verification/recovery, and provider-specific backups/monitorin
 remain separate milestones. Pagination and server-side filters are future work.
 
 Core workflows, invitations, and project archiving are integrated into `main`.
-The deployment foundation is on `dev/deployment-foundation`. Start new development
+The deployment foundation and profiles are integrated into `main`. Start new development
 branches from updated `main`.
 
 ### Task controls
@@ -329,3 +329,43 @@ avatars are stored with profile records in the database and returned as data
 URLs, so no public upload directory or media hosting is needed for this feature.
 Team profile information follows existing membership visibility rules. Apply
 `accounts/0001_initial` after pulling this branch.
+
+
+### Account security and recovery
+
+My Account includes recovery email verification and password changes. Enter your
+current password to request a verification email. Follow the email and explicitly
+confirm ownership before that address can recover your account. Changing the
+recovery address requires verifying the new address; the existing verified
+address remains valid until then. Verified addresses are unique ignoring case.
+Legacy/optional registration emails are unverified and cannot reset passwords.
+Accounts without a verified recovery email continue to work but cannot use email
+recovery. New registrations are directed to My Account to enable recovery.
+
+Forgot password on the sign-in screen requests a reset link. The response is the
+same for known and unknown addresses. Verification and reset links expire after
+one hour, are single-use, and require explicit confirmation. A new verification
+request replaces the previous verification link. Password reset/change signs out
+all sessions. The API checks a server-owned login session for both access and
+refresh tokens; old tokens from before this milestone require signing in again.
+
+Local email delivery writes private MIME files in `backend/.emails/` (ignored by
+Git), not the console. Open the decoded text link from the file to test recovery.
+Production email uses Resend's HTTPS API. See the
+[Vercel/Render/Resend setup guide](docs/VERCEL_RENDER.md) for hosting and sender
+configuration. Frontend origin, sender, and Resend key are mandatory in production.
+
+Endpoints:
+
+- `POST /api/logout/` ends the caller's session.
+- `POST /api/password/change/` takes `current_password`, `new_password`, and `confirm_password`.
+- `POST /api/email/verify/request/` takes `email` and current `password`.
+- `POST /api/email/verify/confirm/` takes `token` (public, explicit action).
+- `POST /api/password/reset/request/` takes `email` (public).
+- `POST /api/password/reset/confirm/` takes `uid`, `token`, `new_password`, and `confirm_password` (public).
+
+Authentication endpoints have persistent database rate counters across workers;
+429 responses include Retry-After. Tests cover expired/reused links, duplicate
+addresses, old session rejection, delivery failures, and simultaneous PostgreSQL
+reset/verification requests. This is basic application abuse protection; deployment
+proxy behavior and edge controls must be validated separately.

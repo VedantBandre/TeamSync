@@ -1,0 +1,64 @@
+# Free compute only. Free Render PostgreSQL expires after 30 days.
+# Review workspace usage/billing limits; do not upgrade plans automatically.
+services:
+  - type: web
+    name: teamsync-api
+    runtime: python
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    branch: main
+    autoDeployTrigger: checksPass
+    buildCommand: bash bin/build.sh
+    startCommand: bash bin/start-free.sh
+    healthCheckPath: /health/
+    envVars:
+      - key: DJANGO_ENV
+        value: production
+      - key: DJANGO_DEBUG
+        value: "false"
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: DJANGO_CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: DJANGO_TRUST_PROXY
+        value: "true"
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: DB_ENGINE
+        value: postgresql
+      - key: DB_SSLMODE
+        value: require
+      - key: DB_NAME
+        fromDatabase:
+          name: teamsync-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: teamsync-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: teamsync-db
+          property: password
+      - key: DB_HOST
+        fromDatabase:
+          name: teamsync-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: teamsync-db
+          property: port
+
+databases:
+  - name: teamsync-db
+    plan: free
+    region: frankfurt
+    postgresMajorVersion: "17"
+    ipAllowList: []
