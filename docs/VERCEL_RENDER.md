@@ -7,10 +7,20 @@ with bearer tokens. The current folder structure already supports this split.
 
 The frontend runs on Vercel; Django and PostgreSQL run on Render in Frankfurt.
 `render.yaml` is a reviewable deployment template, not evidence of a live deployment.
-It selects paid web/database compute with 1 GB database storage. Review Render's
-current billing before creating it. No services or paid resources are created by
-committing this file. Free Render PostgreSQL expires after 30 days; use that only
-for disposable experiments, not the durable deployment described here.
+Both resources explicitly select `plan: free`; the database has a fixed 1 GB limit.
+No resources are created by committing this file, and no paid upgrades are
+authorized. This is a free demo deployment, with these provider limits:
+
+- The API sleeps after 15 minutes of inactivity; waking it can take about a minute.
+- Free Render PostgreSQL expires after 30 days and has no managed backups.
+  Export any data you want to keep before expiry. After the grace period, Render
+  deletes the expired database. A longer-lived deployment needs a separate free
+  PostgreSQL provider and private credential configuration; do not upgrade to paid.
+- Free services have no pre-deploy command or dashboard/SSH shell.
+- Free hours, bandwidth and build minutes are workspace-wide limits. Existing
+  services share them. A free compute plan alone does not prevent usage charges
+  when a payment method is on file: review billing/spend controls and stay within
+  included usage. Do not add a payment method or enable paid overages for TeamSync.
 
 ## 1. Prepare email delivery
 
@@ -48,10 +58,16 @@ reopen the link from the email.
 ## 3. Create the Render backend/database
 
 After merging account security and the deployment configuration to main, create a Render Blueprint
-from this repository. Review the proposed compute/database costs and values.
+from this repository. Verify **both** the web service and database show **Free**
+before applying. If a free database is unavailable (only one is allowed per
+workspace), stop; do not accept a paid substitute or reuse another app's database.
 The service uses `backend` as its root, two Gunicorn workers, WhiteNoise for
 Django admin/static assets, PostgreSQL 17, and `/health/` for health checks.
-Migrations run once in the pre-deploy step, before new application workers start.
+The free-compatible start command runs migrations and expired-auth cleanup before
+starting Gunicorn. A failure stops startup. This preparation runs on restarts too;
+migrations are repeatable and apply only pending changes. Keep schema migrations
+compatible with the previous deployment during a rollout. This configuration is
+for a single free service, not independently scaled app instances.
 
 Enter the prompted private configuration:
 
@@ -97,15 +113,20 @@ Check `https://<render-host>/health/` returns `{"status":"ok"}` and `/admin/`
 loads its static styles. Use the dashboard's deploy logs without enabling request
 body, Authorization header, invitation-query, or authentication-link logging.
 
-Enable Render failure notifications and monitor the health endpoint. Confirm the
-chosen database plan's backups/retention and test a restore into a separate
-instance before putting valuable data in it. Keep a record of the deployed commit
+Enable Render failure notifications. Check health when testing the deployment;
+do not use artificial traffic to keep the free API awake. The free database has
+no provider backups: keep private exports outside the service's ephemeral
+filesystem and test restoring them into a separate local PostgreSQL instance.
+For an export, temporarily allow only your own IP in database external access,
+use the provider's external TLS connection credentials privately with `pg_dump`,
+then remove that IP rule. Never commit exports or credentials. Export before the
+30-day expiry; free Render PostgreSQL is not durable hosting for valuable data.
+Keep a record of the deployed commit
 and the previous successful release. Application rollback does not undo database
 migrations; restore/forward-fix database changes deliberately.
 
-Expired sessions and old rate counters are cleaned during releases. For a long
-period without releases, run `python manage.py cleanup_auth` periodically from
-Render's shell (or schedule it separately). Keep the app's `/admin/` credentials
+Expired sessions and old rate counters are cleaned on startup. The free service
+has no Render shell or paid cron configured. Keep the app's `/admin/` credentials
 private; account API rate limits do not cover Django's admin login.
 
 Sources: [Render Django deployment](https://render.com/docs/deploy-django),

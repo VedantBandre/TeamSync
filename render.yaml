@@ -1,16 +1,16 @@
-# Review paid compute/database plans in Render before creating these resources.
+# Free compute only. Free Render PostgreSQL expires after 30 days.
+# Review workspace usage/billing limits; do not upgrade plans automatically.
 services:
   - type: web
     name: teamsync-api
     runtime: python
-    plan: 0.5c-512mb
+    plan: free
     region: frankfurt
     rootDir: backend
     branch: main
     autoDeployTrigger: checksPass
     buildCommand: bash bin/build.sh
-    preDeployCommand: bash bin/release.sh
-    startCommand: bash bin/start.sh
+    startCommand: bash bin/start-free.sh
     healthCheckPath: /health/
     envVars:
       - key: DJANGO_ENV
@@ -58,8 +58,7 @@ services:
 
 databases:
   - name: teamsync-db
-    plan: 0.1c-256mb
-    diskSizeGB: 1
+    plan: free
     region: frankfurt
     postgresMajorVersion: "17"
     ipAllowList: []

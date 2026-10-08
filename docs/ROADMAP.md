@@ -25,7 +25,10 @@ Selected hosting: Vercel for the frontend, Render for Django and private
 PostgreSQL, and Resend for recovery emails. The deployment import configuration is
 on `dev/deployment-setup`, based on `dev/account-security`; merge account security
 first, then this deployment follow-up. Live provisioning still requires provider
-access, private credentials, and approval of recurring hosting costs.
+access and private credentials. Render web/database plans are explicitly free;
+paid provisioning and upgrades are not authorized. The free database's 30-day
+expiry means this setup is a temporary demo; use a separately configured free
+PostgreSQL provider for longer-lived data.
 
 ## Next milestones, in order
 
