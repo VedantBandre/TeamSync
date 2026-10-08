@@ -2,8 +2,8 @@
 
 TeamSync is a team project-management application. Organizations contain projects,
 and projects contain tasks with assignees, due dates, and TODO / IN_PROGRESS / DONE
-statuses. The Django REST backend is implemented; the frontend folder is currently
-empty.
+statuses. The Django REST backend and React/TypeScript frontend support the core team
+workflow, including account creation, project navigation, and a task board.
 
 ## Local setup
 
@@ -22,6 +22,79 @@ An optional Django admin account can be created with:
 ```sh
 backend/venv/bin/python backend/manage.py createsuperuser
 ```
+
+## Frontend
+
+Use Node.js 24 or newer. Start Django using the instructions above, then in a
+second terminal run these commands from the repository root:
+
+```sh
+npm --prefix frontend ci
+npm --prefix frontend run dev
+```
+
+Open `http://127.0.0.1:5173`. The development server forwards `/api` requests to
+Django at `http://127.0.0.1:8000`.
+
+Create an account and sign in. Create a team and project, then add tasks, choose
+assignees, set due dates, and move work between To do / In progress / Done.
+Search and "Assigned to me" filter the current board. The Team members screen
+shows the team's members and exposes admin controls to add people, change roles,
+rename the team, and remove members. Project/task editing and deletion are also
+available, with confirmation before deletion.
+
+To add a teammate, they first register and share the member ID displayed beside
+their profile. Membership responses include a read-only `username` for display;
+the existing `user` ID field is unchanged.
+
+Tokens are kept in the current tab's session storage. Expired access tokens are
+refreshed automatically; invalid refresh tokens return the user to sign-in.
+Signing out clears this tab's tokens. It does not revoke already issued tokens
+on the server. No sample accounts or project data are inserted into your local
+development database.
+
+The frontend includes responsive layouts, keyboard-accessible native dialogs,
+loading/error states, and bundled fonts. Direct dependency versions and the npm
+lockfile are committed.
+
+### Frontend checks
+
+```sh
+npm --prefix frontend run format:check
+npm --prefix frontend run lint
+npm --prefix frontend test
+npm --prefix frontend run build
+```
+
+Browser tests run the complete workflow against Django at desktop and phone
+viewport sizes and check automated accessibility rules on the sign-in screen
+and task board:
+
+```sh
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
+
+The browser tests start their own servers on ports 8001 and 5174 and use
+`backend/.e2e.sqlite3`, separate from `backend/db.sqlite3`. Each run creates unique
+test accounts. Local runs use `backend/venv/bin/python`; set `TEAMSYNC_PYTHON` if
+your Python environment lives elsewhere. Test screenshots and failure traces
+are stored under `frontend/test-results/` and excluded from Git.
+
+`.github/workflows/frontend.yml` runs formatting, lint, unit/component tests,
+the production build, and browser tests on pushes and pull requests.
+
+### Production build
+
+```sh
+npm --prefix frontend run build
+```
+
+Serve `frontend/dist` and route `/api/*` to Django. Alternatively, set
+`VITE_API_BASE_URL` to your API URL before building and configure the backend's
+allowed origins. See `frontend/.env.example`. The Vite development proxy is not a
+production reverse proxy.
 
 ## API workflow
 
@@ -98,5 +171,11 @@ secret key, and permissive CORS. Before public deployment, configure secrets,
 allowed hosts/origins, HTTPS, and abuse protection for authentication endpoints.
 SQLite does not provide the row locking used to serialize concurrent admin
 removals; verify concurrency behavior on a production database such as PostgreSQL
-before deployment. Email verification, invitations, password reset, and a frontend
-are future work.
+before deployment. Email verification, invitations, password reset, and production deployment
+are future work. The frontend currently loads all accessible records; pagination
+and server-side board filters are future improvements for larger workspaces.
+
+The frontend was started on `dev/frontend-workflow` from `dev/backend-workflow`.
+If the backend pull request is still open, review the frontend against that branch
+first. Once the backend is merged, update the frontend branch against `main` before
+opening its final pull request.

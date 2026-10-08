@@ -60,6 +60,12 @@ class TeamWorkflowTests(APITestCase):
                 self.assertEqual(response.status_code, 400)
         self.assertFalse(Membership.objects.filter(user=self.outsider, organization=self.org).exists())
 
+    def test_membership_response_includes_username(self):
+        response = self.client.get(f"/api/memberships/{self.member_membership.pk}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["username"], self.member.username)
+        self.assertEqual(response.data["user"], self.member.pk)
+
     def test_member_can_read_team_data(self):
         self.client.force_authenticate(self.member)
         for endpoint in ("organizations", "memberships", "projects", "tasks"):

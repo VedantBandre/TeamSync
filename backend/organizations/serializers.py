@@ -13,9 +13,11 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 
 class MembershipSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+
     class Meta:
         model = Membership
-        fields = ["id", "user", "organization", "role"]
+        fields = ["id", "user", "username", "organization", "role"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
