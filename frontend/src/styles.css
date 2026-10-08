@@ -969,7 +969,7 @@ progress::-moz-progress-bar {
   border: 1px solid var(--tone-e8ece4);
   background: var(--tone-f3f5f0);
   border-radius: 10px;
-  min-height: 395px;
+  min-height: 0;
   padding: 13px 12px 16px;
 }
 .column-heading {
@@ -1599,7 +1599,7 @@ td select {
   }
   .column-cards {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
     align-items: start;
   }
   .column-cards > .empty-column,
@@ -1947,9 +1947,30 @@ td select {
   .task-drag-handle {
     display: none;
   }
+  .task-actions .icon-button,
+  .column-heading .icon-button {
+    width: 44px;
+    height: 44px;
+  }
+  .task-status,
+  .add-card,
+  .nav-item,
+  .project-link {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 600px) {
+  .field input,
+  .field select,
+  .field textarea,
+  .team-switcher select,
+  .board-filters select,
+  .search-field input,
+  .task-status {
+    font-size: 16px;
+    min-height: 44px;
+  }
   .board-filters {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1961,6 +1982,10 @@ td select {
   .mine-filter,
   .board-filters .search-field {
     grid-column: 1 / -1;
+  }
+  .board-filters .search-field {
+    height: auto;
+    min-height: 44px;
   }
   .board-filters .search-field input {
     width: 100%;
