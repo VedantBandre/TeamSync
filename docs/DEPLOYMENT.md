@@ -20,15 +20,16 @@ Production requires:
 | --- | --- |
 | `DJANGO_ENV` | `production` |
 | `DJANGO_SECRET_KEY` | A privately generated random key, at least 50 characters |
-| `DJANGO_ALLOWED_HOSTS` | Comma-separated explicit backend host names |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated explicit backend host names; on Render its assigned hostname is added automatically |
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST` | PostgreSQL credentials and host |
 | `DB_PORT` | Optional; defaults to `5432` |
 | `DB_SSLMODE` | `require` by default; `verify-ca`/`verify-full` also supported |
 | `DJANGO_CORS_ALLOWED_ORIGINS` | HTTPS frontend origins if frontend/API origins differ |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Explicit HTTPS origins for cross-origin session/admin forms, if needed |
 | `FRONTEND_ORIGIN` | One exact HTTPS frontend origin for recovery links |
-| `DEFAULT_FROM_EMAIL` | Verified Resend sending address |
-| `RESEND_API_KEY` | Private sending key, entered in Render |
+| `EMAIL_DELIVERY` | `disabled` for deployment without email, or `resend` to enable recovery |
+| `DEFAULT_FROM_EMAIL` | Verified Resend sending address, required in Resend mode |
+| `RESEND_API_KEY` | Private sending key, required in Resend mode, entered in Render |
 | `DJANGO_TRUST_PROXY` | `true` only for a trusted proxy that strips/replaces incoming `X-Forwarded-Proto` |
 
 `DJANGO_DEBUG` defaults to false in production and cannot be enabled there. Unsafe

@@ -33,6 +33,8 @@ class EmailUnavailable(APIException):
 
 
 def deliver(email, subject, params):
+    if not settings.EMAIL_RECOVERY_AVAILABLE:
+        raise EmailUnavailable("Email recovery is not configured for this workspace.")
     # Frontend origin is operator-configured, never supplied by Host or request data.
     link = settings.FRONTEND_ORIGIN + "/#" + urlencode(params)
     try:
@@ -171,6 +173,9 @@ class ResetRequestView(PublicSecurityView):
     auth_scope = "reset"
 
     def post(self, request):
+        if not settings.EMAIL_RECOVERY_AVAILABLE:
+            # Global availability, identical for every address; no account lookup.
+            raise EmailUnavailable("Email recovery is not configured for this workspace.")
         form = EmailInput(data=request.data)
         form.is_valid(raise_exception=True)
         address = RecoveryEmail.objects.select_related("user").filter(email=form.validated_data["email"], user__is_active=True).first()

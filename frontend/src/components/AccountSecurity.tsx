@@ -7,13 +7,16 @@ export function AccountSecurity({ user }: { user: User }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [notice, setNotice] = useState("");
+  const recoveryAvailable = user.email_recovery_available !== false;
   return (
     <section className="account-card" aria-labelledby="security-heading">
       <h2 id="security-heading">Security and recovery</h2>
       <p className="muted">
-        {user.email_verified
-          ? `Verified recovery email: ${user.email}`
-          : "Add and verify a recovery email so you can reset a forgotten password."}
+        {!recoveryAvailable
+          ? "Email recovery is not configured yet. You can still change your password below."
+          : user.email_verified
+            ? `Verified recovery email: ${user.email}`
+            : "Add and verify a recovery email so you can reset a forgotten password."}
       </p>
       <ErrorNotice error={error} />
       {notice && (
@@ -21,59 +24,61 @@ export function AccountSecurity({ user }: { user: User }) {
           {notice}
         </p>
       )}
-      <form
-        aria-label="Verify recovery email"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          const element = event.currentTarget;
-          const form = new FormData(element);
-          setBusy(true);
-          setError(null);
-          setNotice("");
-          try {
-            await save("/email/verify/request/", {
-              email: form.get("recovery_email"),
-              password: form.get("verify_password"),
-            });
-            setNotice(
-              "Check your inbox and confirm the verification link. It expires in one hour.",
-            );
-            element.reset();
-          } catch (failure) {
-            setError(failure);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <fieldset disabled={busy}>
-          <Field label="Recovery email" name="recovery_email" error={error}>
-            <input
-              id="recovery_email"
-              name="recovery_email"
-              type="email"
-              required
-              autoComplete="email"
-              defaultValue={user.email}
-            />
-          </Field>
-          <Field
-            label="Password to verify email"
-            name="verify_password"
-            error={error}
-          >
-            <input
-              id="verify_password"
+      {recoveryAvailable && (
+        <form
+          aria-label="Verify recovery email"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const element = event.currentTarget;
+            const form = new FormData(element);
+            setBusy(true);
+            setError(null);
+            setNotice("");
+            try {
+              await save("/email/verify/request/", {
+                email: form.get("recovery_email"),
+                password: form.get("verify_password"),
+              });
+              setNotice(
+                "Check your inbox and confirm the verification link. It expires in one hour.",
+              );
+              element.reset();
+            } catch (failure) {
+              setError(failure);
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          <fieldset disabled={busy}>
+            <Field label="Recovery email" name="recovery_email" error={error}>
+              <input
+                id="recovery_email"
+                name="recovery_email"
+                type="email"
+                required
+                autoComplete="email"
+                defaultValue={user.email}
+              />
+            </Field>
+            <Field
+              label="Password to verify email"
               name="verify_password"
-              type="password"
-              required
-              autoComplete="current-password"
-              maxLength={256}
-            />
-          </Field>
-          <SubmitButton busy={busy}>Send verification email</SubmitButton>
-        </fieldset>
-      </form>
+              error={error}
+            >
+              <input
+                id="verify_password"
+                name="verify_password"
+                type="password"
+                required
+                autoComplete="current-password"
+                maxLength={256}
+              />
+            </Field>
+            <SubmitButton busy={busy}>Send verification email</SubmitButton>
+          </fieldset>
+        </form>
+      )}
       <form
         className="account-section"
         aria-label="Change password"

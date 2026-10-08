@@ -5,7 +5,7 @@ from unittest.mock import patch
 from django.core.mail import EmailMessage
 from django.test import SimpleTestCase, override_settings
 
-from .email_backend import ResendBackend
+from .email_backend import ResendBackend, DisabledBackend
 
 
 @override_settings(RESEND_API_KEY="test-only")
@@ -30,3 +30,10 @@ class EmailDeliveryTests(SimpleTestCase):
             with self.assertRaises(OSError):
                 ResendBackend().send_messages([self.message()])
             self.assertEqual(ResendBackend(fail_silently=True).send_messages([self.message()]), 0)
+
+    def test_disabled_backend_never_claims_delivery_or_calls_provider(self):
+        with patch("accounts.email_backend.urlopen") as send:
+            with self.assertRaises(OSError):
+                DisabledBackend().send_messages([self.message()])
+            self.assertEqual(DisabledBackend(fail_silently=True).send_messages([self.message()]), 0)
+            send.assert_not_called()

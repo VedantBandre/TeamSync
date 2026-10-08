@@ -6,6 +6,13 @@ from django.conf import settings
 from django.core.mail.backends.base import BaseEmailBackend
 
 
+class DisabledBackend(BaseEmailBackend):
+    def send_messages(self, email_messages):
+        if email_messages and not self.fail_silently:
+            raise OSError("Email recovery is not configured.")
+        return 0
+
+
 class ResendBackend(BaseEmailBackend):
     def send_messages(self, email_messages):
         sent = 0

@@ -19,18 +19,16 @@ services:
         value: "false"
       - key: DJANGO_SECRET_KEY
         sync: false
-      - key: DJANGO_ALLOWED_HOSTS
-        sync: false
       - key: FRONTEND_ORIGIN
-        sync: false
+        value: https://team-sync-omega-ruby.vercel.app
       - key: DJANGO_CORS_ALLOWED_ORIGINS
-        sync: false
+        value: https://team-sync-omega-ruby.vercel.app
       - key: DJANGO_TRUST_PROXY
         value: "true"
-      - key: DEFAULT_FROM_EMAIL
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
+      - key: EMAIL_DELIVERY
+        value: disabled
+      - key: GUNICORN_CMD_ARGS
+        value: "--access-logfile /dev/null"
       - key: DB_ENGINE
         value: postgresql
       - key: DB_SSLMODE
