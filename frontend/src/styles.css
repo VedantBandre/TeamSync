@@ -1503,6 +1503,14 @@ td select {
 .auth-switch .text-button {
   margin-left: 4px;
 }
+.auth-forgot {
+  display: block;
+  margin: 16px auto 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 44px;
+}
 .connection-screen {
   display: flex;
   flex-direction: column;

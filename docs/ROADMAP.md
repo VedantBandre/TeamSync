@@ -10,32 +10,32 @@
 - Environment-based deployment settings and PostgreSQL CI (PR #12).
 - Green dark mode, My Account, profile photo, nickname, and status (PR #13).
 - Invitation browser-test race fix.
+- Server-owned login sessions, password changes, and verified email recovery.
+- Free Render deployment support before email-provider setup.
+- Responsive board column sizing and mobile layout improvements.
 
-## Current milestone: account security and recovery
+## Current status: deployed demo
 
-Branch: `dev/account-security`, started from merged profiles and invitation fix.
+The Vercel frontend is connected to the Render Django API and PostgreSQL.
+Live browser checks passed for registration/sign-in, teams, projects, tasks,
+comments, profiles, password changes, logout, and mobile layouts. Invitation and
+archive workflows remain covered by the repository's automated browser tests;
+these were not part of the live smoke test.
 
-Server-owned revocable login sessions, password change/reset, verified recovery
-addresses, database-backed authentication rate limits, and complete browser flows.
-Vercel/Render/Resend configuration is prepared in this branch. Actual provider
-resources, delivery, backups/restore, and live smoke tests are not yet verified.
-See [deployment setup](VERCEL_RENDER.md).
+Resend delivery is not configured, so live email verification/recovery is
+disabled. Password changes remain available. See [deployment setup](VERCEL_RENDER.md).
 
-Selected hosting: Vercel for the frontend, Render for Django and private
-PostgreSQL, and Resend for recovery emails. The deployment import configuration is
-on `dev/deployment-setup`, based on `dev/account-security`; merge account security
-first, then this deployment follow-up. Live provisioning still requires provider
-access and private credentials. Render web/database plans are explicitly free;
-paid provisioning and upgrades are not authorized. The free database's 30-day
-expiry means this setup is a temporary demo; use a separately configured free
-PostgreSQL provider for longer-lived data.
+Render web/database plans are explicitly free; paid provisioning and upgrades
+are not authorized. The free database's 30-day expiry makes this a temporary
+demo. A longer-lived free database, backups with a restore check, and monitoring
+remain unfinished.
 
 ## Next milestones, in order
 
-1. **Deployment:** choose hosting/domain, configure a trusted HTTPS proxy,
-   static assets, secrets, database backups with a restore check, and monitoring.
-   Validate concurrent invitations, last-admin protection, and archive/task writes
-   against PostgreSQL before public launch.
+1. **Deployment follow-through:** configure a verified Resend sender, test live
+   recovery, select a longer-lived free database, and prepare backups/restore and
+   monitoring. Validate invitations, role protection, and archive/task writes on
+   the actual deployed PostgreSQL database before relying on it for ongoing work.
 2. **Larger workspaces:** pagination and server-side task search/filtering, with
    permission and navigation checks for paginated records.
 3. **Live collaboration:** fresh task/discussion updates and useful notifications,
