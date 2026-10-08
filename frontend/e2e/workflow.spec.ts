@@ -5,6 +5,9 @@ test("a team can register, organize projects, and move tasks forward", async ({
   page,
   request,
 }, testInfo) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("teamsync.theme", "dark"),
+  );
   const suffix = `${Date.now()}_${testInfo.project.name}`;
   const owner = `alex_${suffix}`;
   const teammate = `sam_${suffix}`;

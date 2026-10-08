@@ -7,15 +7,15 @@
 - Task comments and activity history.
 - Single-use team invitation links.
 - Project archive and restore (PR #11).
+- Environment-based deployment settings and PostgreSQL CI (PR #12).
 
-## Current milestone: deployment foundation
+## Current milestone: appearance and personal profiles
 
-Branch: `dev/deployment-foundation`.
+Branch: `dev/account-and-dark-mode`.
 
-Environment-based configuration with fail-fast production checks, PostgreSQL
-support, a production WSGI server, and CI coverage for both database engines.
-Keep SQLite for simple local development. Document how to run and validate the
-production configuration before choosing a hosting provider.
+A persistent dark mode toggle using the existing green palette, and My Account
+with editable display name, nickname, photo, and emoji/text status. Shared profile
+information appears in the team list; identity and permissions stay server-owned.
 
 ## Next milestones, in order
 

@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied
 
+from accounts.serializers import profile_data
+
 from .models import Organization, Membership
 from .permissions import is_admin
 
@@ -14,10 +16,14 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 class MembershipSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    profile = serializers.SerializerMethodField()
+
+    def get_profile(self, membership):
+        return profile_data(membership.user)
 
     class Meta:
         model = Membership
-        fields = ["id", "user", "username", "organization", "role"]
+        fields = ["id", "user", "username", "organization", "role", "profile"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
