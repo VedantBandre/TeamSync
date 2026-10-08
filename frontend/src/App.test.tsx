@@ -41,6 +41,7 @@ beforeEach(() => {
         project: 1,
         assigned_to: 2,
         status: "TODO",
+        priority: "MEDIUM",
         due_date: null,
         created_at: "2026-10-01",
       },
@@ -112,9 +113,11 @@ it("creates an assigned task and displays it on the board", async () => {
   const dialog = within(screen.getByRole("dialog"));
   await actor.type(dialog.getByLabelText("Task title"), "Ship release");
   await actor.selectOptions(dialog.getByLabelText("Assignee"), "2");
+  await actor.selectOptions(dialog.getByLabelText("Priority"), "URGENT");
   await actor.click(dialog.getByRole("button", { name: "Create task" }));
   await screen.findByRole("heading", { name: "Ship release" });
   expect(data.tasks[1].assigned_to).toBe(2);
+  expect(data.tasks[1].priority).toBe("URGENT");
   expect(data.tasks[1].project).toBe(1);
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
@@ -441,4 +444,24 @@ it("does not redirect or close a new editor when an old save finishes after navi
   expect(window.location.search).toBe("?team=1&project=2");
   expect(screen.getByRole("dialog")).toBeVisible();
   expect(screen.getByLabelText("Task title")).toHaveValue("New draft");
+});
+
+it("edits a task priority and filters the saved result", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  await actor.click(screen.getByRole("button", { name: "Edit Plan release" }));
+  const dialog = within(screen.getByRole("dialog"));
+  await actor.selectOptions(dialog.getByLabelText("Priority"), "LOW");
+  await actor.click(dialog.getByRole("button", { name: "Save changes" }));
+  await screen.findByText("Low priority");
+  expect(data.tasks[0].priority).toBe("LOW");
+  await actor.selectOptions(
+    screen.getByLabelText("Filter by priority"),
+    "HIGH",
+  );
+  expect(
+    screen.queryByRole("heading", { name: "Plan release" }),
+  ).not.toBeInTheDocument();
+  await actor.click(screen.getByRole("button", { name: "Clear filters" }));
+  expect(screen.getByRole("heading", { name: "Plan release" })).toBeVisible();
 });

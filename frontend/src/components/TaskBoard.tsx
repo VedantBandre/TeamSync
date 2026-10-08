@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  GripVertical,
   Circle,
   CircleCheck,
   CircleDashed,
@@ -7,8 +8,9 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
+import { useState } from "react";
 import type { Membership, Task, TaskStatus } from "../lib/types";
-import { statuses } from "../lib/types";
+import { priorities, statuses } from "../lib/types";
 
 export function TaskBoard({
   tasks,
@@ -27,6 +29,8 @@ export function TaskBoard({
   onStatus: (task: Task, status: TaskStatus) => void;
   onCreate: (status: TaskStatus) => void;
 }) {
+  const [dragged, setDragged] = useState<Task | null>(null);
+  const [over, setOver] = useState<TaskStatus | null>(null);
   const icons = [CircleDashed, Circle, CircleCheck];
   return (
     <div className="board">
@@ -35,7 +39,32 @@ export function TaskBoard({
         const Icon = icons[index];
         return (
           <section
-            className={`board-column column-${status.value.toLowerCase()}`}
+            className={`board-column column-${status.value.toLowerCase()} ${over === status.value ? "drop-target" : ""}`}
+            onDragOver={(event) => {
+              if (!dragged || pending !== null) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setOver(status.value);
+            }}
+            onDragLeave={(event) => {
+              if (
+                !event.currentTarget.contains(
+                  event.relatedTarget as Node | null,
+                )
+              )
+                setOver(null);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              if (
+                dragged &&
+                pending === null &&
+                dragged.status !== status.value
+              )
+                onStatus(dragged, status.value);
+              setDragged(null);
+              setOver(null);
+            }}
             key={status.value}
             aria-labelledby={`column-${status.value}`}
           >
@@ -68,7 +97,36 @@ export function TaskBoard({
                     key={task.id}
                   >
                     <div className="task-card-heading">
-                      <span className="task-id">TS-{task.id}</span>
+                      <span className="task-id">
+                        <span
+                          className="task-drag-handle"
+                          draggable={pending === null}
+                          title={`Drag ${task.title} to another column`}
+                          aria-hidden="true"
+                          onDragStart={(event) => {
+                            if (pending !== null) {
+                              event.preventDefault();
+                              return;
+                            }
+                            event.dataTransfer.setData(
+                              "text/plain",
+                              String(task.id),
+                            );
+                            event.dataTransfer.effectAllowed = "move";
+                            const card = event.currentTarget.closest("article");
+                            if (card)
+                              event.dataTransfer.setDragImage(card, 20, 20);
+                            setDragged(task);
+                          }}
+                          onDragEnd={() => {
+                            setDragged(null);
+                            setOver(null);
+                          }}
+                        >
+                          <GripVertical size={15} />
+                        </span>
+                        TS-{task.id}
+                      </span>
                       <div className="task-actions">
                         <button
                           className="icon-button"
@@ -90,6 +148,16 @@ export function TaskBoard({
                     </div>
                     <h3>{task.title}</h3>
                     {task.description && <p>{task.description}</p>}
+                    <span
+                      className={`priority-badge priority-${task.priority.toLowerCase()}`}
+                    >
+                      {
+                        priorities.find(
+                          (priority) => priority.value === task.priority,
+                        )?.label
+                      }{" "}
+                      priority
+                    </span>
                     <div className="task-meta">
                       {date && (
                         <time

@@ -51,6 +51,7 @@ test("a team can register, organize projects, and move tasks forward", async ({
 
   await page.getByRole("button", { name: "New task", exact: true }).click();
   await page.getByLabel("Task title").fill("Build the first version");
+  await page.getByLabel("Priority", { exact: true }).selectOption("HIGH");
   await page
     .getByLabel("Description (optional)")
     .fill("Bring the core workflow together and test it with the team.");
@@ -105,6 +106,58 @@ test("a team can register, organize projects, and move tasks forward", async ({
   await expect(
     page.getByRole("heading", { name: "Build the first version" }),
   ).toBeVisible();
+
+  const releaseCard = page.locator("article").filter({
+    has: page.getByRole("heading", { name: "Build the first version" }),
+  });
+  await expect(
+    releaseCard.getByText("High priority", { exact: true }),
+  ).toBeVisible();
+  await page.getByLabel("Filter by priority").selectOption("HIGH");
+  await expect(
+    page.getByRole("heading", { name: "Prepare launch notes" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  await page.getByLabel("Filter by assignee").selectOption("unassigned");
+  await expect(
+    page.getByRole("heading", { name: "Build the first version" }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Clear filters" }).click();
+  if (testInfo.project.name === "desktop") {
+    await page.route("**/api/tasks/*/", async (route) => {
+      if (route.request().method() === "PATCH")
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "Move failed. Try again." }),
+        });
+      else await route.continue();
+    });
+    await page
+      .getByTitle("Drag Build the first version to another column")
+      .dragTo(page.locator(".column-done"));
+    await expect(page.getByRole("alert")).toContainText("Move failed");
+    await expect(
+      page.getByLabel("Status of Build the first version"),
+    ).toHaveValue("IN_PROGRESS");
+    await page.unroute("**/api/tasks/*/");
+    await page
+      .getByTitle("Drag Build the first version to another column")
+      .dragTo(page.locator(".column-done"));
+    await expect(
+      page.getByLabel("Status of Build the first version"),
+    ).toHaveValue("DONE");
+    await page.reload();
+    await expect(
+      page.getByLabel("Status of Build the first version"),
+    ).toHaveValue("DONE");
+    await page
+      .getByLabel("Status of Build the first version")
+      .selectOption("IN_PROGRESS");
+    await expect(
+      page.getByLabel("Status of Build the first version"),
+    ).toHaveValue("IN_PROGRESS");
+  }
 
   await page.getByRole("button", { name: /Team members/ }).click();
   await page.getByLabel(`Role of ${owner}`).selectOption("MEMBER");

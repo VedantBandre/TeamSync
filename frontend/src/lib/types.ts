@@ -24,6 +24,13 @@ export interface Project {
   created_at: string;
 }
 export type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+export const priorities: { value: TaskPriority; label: string }[] = [
+  { value: "LOW", label: "Low" },
+  { value: "MEDIUM", label: "Medium" },
+  { value: "HIGH", label: "High" },
+  { value: "URGENT", label: "Urgent" },
+];
 export interface Task {
   id: number;
   title: string;
@@ -31,6 +38,7 @@ export interface Task {
   project: number;
   assigned_to: number | null;
   status: TaskStatus;
+  priority: TaskPriority;
   due_date: string | null;
   created_at: string;
 }

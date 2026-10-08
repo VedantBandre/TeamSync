@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { filterTasks, type DueFilter } from "../lib/taskFilters";
+import { priorities } from "../lib/types";
 import {
   ArrowRight,
   CheckCheck,
@@ -62,6 +64,9 @@ export function Workspace({
   } | null>(null);
   const [query, setQuery] = useState("");
   const [mine, setMine] = useState(false);
+  const [assignee, setAssignee] = useState("all");
+  const [due, setDue] = useState<DueFilter>("all");
+  const [priority, setPriority] = useState("all");
   const [editor, setEditor] = useState<Editor | null>(null);
   const [pending, setPending] = useState<number | null>(null);
   useEffect(() => {
@@ -103,6 +108,9 @@ export function Workspace({
       setEditor(null);
       setQuery("");
       setMine(false);
+      setAssignee("all");
+      setDue("all");
+      setPriority("all");
       setShareFeedback(null);
     };
     window.addEventListener("popstate", reset);
@@ -119,13 +127,25 @@ export function Workspace({
     (item) => item.user === user.id && item.role === "ADMIN",
   );
   const tasks = data.tasks.filter((task) => task.project === project?.id);
-  const visibleTasks = tasks.filter(
-    (task) =>
-      (!mine || task.assigned_to === user.id) &&
-      `${task.title} ${task.description}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
-  );
+  const visibleTasks = filterTasks(tasks, {
+    query,
+    assignee: mine ? String(user.id) : assignee,
+    due,
+    priority,
+  });
+  const filtersActive =
+    !!query ||
+    mine ||
+    assignee !== "all" ||
+    due !== "all" ||
+    priority !== "all";
+  function clearFilters() {
+    setQuery("");
+    setMine(false);
+    setAssignee("all");
+    setDue("all");
+    setPriority("all");
+  }
   const completed = tasks.filter((task) => task.status === "DONE").length;
   const progress = tasks.length
     ? Math.round((completed / tasks.length) * 100)
@@ -768,10 +788,54 @@ export function Workspace({
                     <input
                       type="checkbox"
                       checked={mine}
-                      onChange={(event) => setMine(event.target.checked)}
+                      onChange={(event) => {
+                        setMine(event.target.checked);
+                        setAssignee("all");
+                      }}
                     />
                     Assigned to me
                   </label>
+                  <select
+                    aria-label="Filter by assignee"
+                    value={assignee}
+                    onChange={(event) => {
+                      setAssignee(event.target.value);
+                      setMine(false);
+                    }}
+                  >
+                    <option value="all">All assignees</option>
+                    <option value="unassigned">Unassigned</option>
+                    {members.map((member) => (
+                      <option key={member.id} value={member.user}>
+                        {member.username}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Filter by due date"
+                    value={due}
+                    onChange={(event) =>
+                      setDue(event.target.value as DueFilter)
+                    }
+                  >
+                    <option value="all">All deadlines</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="today">Due today</option>
+                    <option value="week">Next 7 days</option>
+                    <option value="none">No due date</option>
+                  </select>
+                  <select
+                    aria-label="Filter by priority"
+                    value={priority}
+                    onChange={(event) => setPriority(event.target.value)}
+                  >
+                    <option value="all">All priorities</option>
+                    {priorities.map((choice) => (
+                      <option key={choice.value} value={choice.value}>
+                        {choice.label}
+                      </option>
+                    ))}
+                  </select>
                   <div className="search-field">
                     <Search size={16} />
                     <input
@@ -784,16 +848,12 @@ export function Workspace({
                   </div>
                 </div>
               </div>
-              {(query || mine) && visibleTasks.length === 0 && (
+              {filtersActive && (
                 <p className="filter-empty" role="status">
-                  No tasks match your filters.{" "}
-                  <button
-                    className="text-button"
-                    onClick={() => {
-                      setQuery("");
-                      setMine(false);
-                    }}
-                  >
+                  {visibleTasks.length === 0
+                    ? "No tasks match your filters."
+                    : `Showing ${visibleTasks.length} of ${tasks.length} tasks.`}{" "}
+                  <button className="text-button" onClick={clearFilters}>
                     Clear filters
                   </button>
                 </p>
@@ -817,9 +877,11 @@ export function Workspace({
               <footer className="board-footer">
                 <span>
                   <span className="mini-dot" />
-                  {loading
-                    ? "Refreshing your workspace…"
-                    : "Shared with your team"}
+                  {pending !== null
+                    ? "Saving your changes…"
+                    : loading
+                      ? "Refreshing your workspace…"
+                      : "Shared with your team"}
                 </span>
                 <span>
                   {members.length} {members.length === 1 ? "member" : "members"}{" "}
