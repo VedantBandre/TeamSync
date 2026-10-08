@@ -35,3 +35,16 @@ class Membership(models.Model):
 
     class Meta:
         unique_together = ("user", "organization")
+
+class Invitation(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invitations")
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="created_invitations")
+    token_digest = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    accepted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="accepted_invitations")
+
+    class Meta:
+        ordering = ["-created_at", "-id"]

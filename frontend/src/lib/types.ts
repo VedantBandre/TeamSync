@@ -82,3 +82,21 @@ export interface Page<T> {
   previous: string | null;
   results: T[];
 }
+
+export interface Invitation {
+  id: number;
+  organization: number;
+  organization_name: string;
+  created_at: string;
+  expires_at: string;
+  revoked_at: string | null;
+  accepted_at: string | null;
+  state: "ACTIVE" | "ACCEPTED" | "EXPIRED" | "REVOKED";
+}
+export interface InvitationPreview {
+  organization: number;
+  organization_name: string;
+  expires_at: string;
+  already_member: boolean;
+  role: "MEMBER";
+}

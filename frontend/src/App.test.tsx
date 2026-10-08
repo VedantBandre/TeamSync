@@ -51,6 +51,8 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockImplementation(async (path, options) => {
     const url = String(path);
+    if (url.startsWith("/api/invitations/?"))
+      return json({ count: 0, results: [], next: null, previous: null });
     if (url === "/api/token/")
       return json({ access: "access", refresh: "refresh" });
     if (url === "/api/register/")

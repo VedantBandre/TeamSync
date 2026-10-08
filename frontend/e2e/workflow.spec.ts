@@ -87,7 +87,9 @@ test("a team can register, organize projects, and move tasks forward", async ({
     fullPage: true,
   });
   const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth > window.innerWidth,
+    () =>
+      document.documentElement.scrollWidth >
+      document.documentElement.clientWidth,
   );
   expect(overflow).toBe(false);
   const boardAccessibility = await new AxeBuilder({ page })
@@ -411,7 +413,9 @@ test("project links survive sign-in, refresh, history, and denied access", async
     await page.setViewportSize({ width: 320, height: 740 });
     expect(
       await page.evaluate(
-        () => document.documentElement.scrollWidth > window.innerWidth,
+        () =>
+          document.documentElement.scrollWidth >
+          document.documentElement.clientWidth,
       ),
     ).toBe(false);
   }
