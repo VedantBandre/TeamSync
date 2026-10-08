@@ -28,7 +28,7 @@ interface EditorProps {
   project?: Project;
   members: Membership[];
   onClose: () => void;
-  onSaved: (resource?: string, id?: number) => Promise<void>;
+  onSaved: (resource?: string, id?: number, deleted?: boolean) => Promise<void>;
 }
 
 export function EditorDialog({
@@ -58,7 +58,7 @@ export function EditorDialog({
         await request(`/${editor.resource}/${editor.id}/`, {
           method: "DELETE",
         });
-        await onSaved();
+        await onSaved(editor.resource, editor.id, true);
         onClose();
         return;
       }

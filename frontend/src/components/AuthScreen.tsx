@@ -1,10 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ArrowRight, Check, Layers3 } from "lucide-react";
 import { login, request } from "../lib/api";
 import type { User } from "../lib/types";
 import { ErrorNotice, Field, SubmitButton } from "./Form";
 
 export function AuthScreen({ onLogin }: { onLogin: (user: User) => void }) {
+  useEffect(() => {
+    document.title = "Sign in · TeamSync";
+  }, []);
   const [register, setRegister] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
