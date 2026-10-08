@@ -4,9 +4,19 @@ import { clearSession, hasSession, request } from "./lib/api";
 import type { User } from "./lib/types";
 import { AuthScreen } from "./components/AuthScreen";
 import { ErrorNotice } from "./components/Form";
+import { AcceptInvitation } from "./components/Invitations";
+import { useWorkspaceLocation } from "./lib/navigation";
 import { Workspace } from "./components/Workspace";
 
 export default function App() {
+  const location = useWorkspaceLocation();
+  const inviteParams = new URL(location, window.location.origin).searchParams;
+  const inviteValues = inviteParams.getAll("invite");
+  const inviteToken = inviteValues.length
+    ? inviteValues.length === 1 && /^[A-Za-z0-9_-]{43}$/.test(inviteValues[0])
+      ? inviteValues[0]
+      : "invalid"
+    : null;
   const [user, setUser] = useState<User | null>(null);
   const [restoring, setRestoring] = useState(hasSession);
   const [error, setError] = useState<unknown>(null);
@@ -71,7 +81,16 @@ export default function App() {
       </main>
     );
   return user ? (
-    <Workspace user={user} onLogout={clearSession} />
+    inviteToken ? (
+      <AcceptInvitation
+        key={`${user.id}:${inviteToken}`}
+        token={inviteToken}
+        user={user}
+        onLogout={clearSession}
+      />
+    ) : (
+      <Workspace user={user} onLogout={clearSession} />
+    )
   ) : (
     <AuthScreen
       onLogin={(value) => {

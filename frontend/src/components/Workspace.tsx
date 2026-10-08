@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { InvitationManager } from "./Invitations";
 import { TaskDiscussion } from "./TaskDiscussion";
 import { filterTasks, type DueFilter } from "../lib/taskFilters";
 import { priorities } from "../lib/types";
@@ -624,6 +625,12 @@ export function Workspace({
                   </table>
                 </div>
               </section>
+              {isAdmin && (
+                <InvitationManager
+                  key={organization.id}
+                  organization={organization}
+                />
+              )}
               <p className="form-hint members-hint">
                 Admins manage the team and its projects. Members can create,
                 assign, and update tasks.

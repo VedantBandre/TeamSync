@@ -21,6 +21,7 @@ from rest_framework.routers import DefaultRouter
 from accounts.views import RegisterView, CurrentUserView
 
 from organizations.views import OrganizationViewSet, MembershipViewSet
+from organizations.invitations import InvitationViewSet, InvitationLookupView, InvitationAcceptView
 from projects.views import ProjectViewSet
 from tasks.views import TaskViewSet
 
@@ -31,15 +32,19 @@ router.register(r"organizations", OrganizationViewSet)
 router.register(r"memberships", MembershipViewSet)
 router.register(r"projects", ProjectViewSet)
 router.register(r"tasks", TaskViewSet)
+router.register(r"invitations", InvitationViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
 ]
 
 urlpatterns += [
+    path("api/invitations/preview/", InvitationLookupView.as_view()),
+    path("api/invitations/accept/", InvitationAcceptView.as_view()),
     path("api/register/", RegisterView.as_view(), name="register"),
     path("api/me/", CurrentUserView.as_view(), name="current-user"),
     path("api/token/", TokenObtainPairView.as_view()),
     path("api/token/refresh/", TokenRefreshView.as_view()),
 ]
+
+urlpatterns += [path("api/", include(router.urls))]

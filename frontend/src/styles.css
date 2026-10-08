@@ -1009,6 +1009,7 @@ fieldset {
   margin-left: auto;
 }
 .table-scroll {
+  position: relative;
   overflow-x: auto;
 }
 table {
@@ -1766,4 +1767,125 @@ td select {
 }
 .comment-actions .danger-text {
   color: #9b3028;
+}
+
+.invitations-panel {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 22px;
+  background: white;
+}
+.invitations-panel .panel-heading {
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.invitations-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+}
+.invitations-panel > .form-hint {
+  margin: 16px 0;
+}
+.invite-notice {
+  font-size: 12px;
+  color: var(--green);
+  margin: 14px 0;
+}
+.invite-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0;
+}
+.invite-link label {
+  width: 100%;
+  font-size: 12px;
+  font-weight: 600;
+}
+.invite-link input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 12px;
+}
+.invitation-list {
+  padding: 0;
+  list-style: none;
+}
+.invitation-list li {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.invitation-list strong {
+  font-size: 12px;
+}
+.invitation-list p {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 7px;
+}
+.invite-state {
+  font-size: 10px;
+  text-transform: capitalize;
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: 5px;
+  margin-left: 10px;
+  color: #4a5b43;
+  background: #edf1e9;
+}
+.invitation-card {
+  width: 100%;
+  max-width: 480px;
+  padding: 30px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: white;
+}
+.invitation-card .brand {
+  margin-bottom: 30px;
+}
+.invitation-card h1 {
+  font-size: 26px;
+  overflow-wrap: anywhere;
+  margin: 14px 0;
+}
+.invitation-card p {
+  margin: 15px 0;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.invitation-card > .button {
+  margin: 12px 0;
+}
+.invitation-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+}
+@media (max-width: 600px) {
+  .invitations-panel {
+    padding: 18px;
+  }
+  .invite-link input {
+    flex-basis: 100%;
+  }
+  .invitation-card {
+    padding: 22px;
+  }
 }

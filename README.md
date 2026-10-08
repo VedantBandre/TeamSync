@@ -184,19 +184,13 @@ secret key, and permissive CORS. Before public deployment, configure secrets,
 allowed hosts/origins, HTTPS, and abuse protection for authentication endpoints.
 SQLite does not provide the row locking used to serialize concurrent admin
 removals; verify concurrency behavior on a production database such as PostgreSQL
-before deployment. Email verification, invitations, password reset, and production deployment
+before deployment. Email verification, password reset, and production deployment
 are future work. The frontend currently loads all accessible records; pagination
 and server-side board filters are future improvements for larger workspaces.
 
-The frontend was started on `dev/frontend-workflow` from `dev/backend-workflow`.
-If the backend pull request is still open, review the frontend against that branch
-first. Once the backend is merged, update the frontend branch against `main` before
-opening its final pull request.
-
-Project navigation changes are isolated on `dev/project-navigation`, based on
-`dev/frontend-workflow`. Review this branch against the frontend branch until
-that work is merged into `main`.
-
+The backend workflow, frontend workspace, project navigation, task controls, and
+task discussion are integrated into `main`. Start new development branches from
+an updated `main`; the invitation feature is on `dev/team-invitations`.
 
 ### Task controls
 
@@ -215,8 +209,7 @@ On desktop, drag a card using its grip into another column. Status dropdowns wor
 with keyboards and touch devices. Moves are shown only after the server saves
 successfully; failed moves retain the original status and display an error.
 
-`dev/task-controls` builds on `dev/project-navigation`; review the task controls
-against that branch until the earlier work reaches `main`.
+Task controls are integrated into `main`.
 
 
 ### Task comments and activity
@@ -248,5 +241,42 @@ entries. Refresh discussion retrieves current comments and history. Drafts remai
 available after failed writes; successful writes are distinguished from a failed
 subsequent refresh so users are not encouraged to submit duplicates.
 
-`dev/task-discussion` builds on `dev/task-controls` while the earlier branches
-await integration into `main`.
+Task comments and activity are integrated into `main`.
+
+
+### Team invitation links
+
+In Team members, admins can create a link, copy it, and share it with a teammate.
+Each link expires after seven days and can admit one signed-in user as a MEMBER.
+Recipients can register or sign in without losing the invitation, preview the
+team, and explicitly choose Join team. Joining opens the team's members page and
+removes the invitation token from the current URL. No email provider is required;
+email delivery and address-bound invitations are separate future improvements.
+
+An admin can revoke an unused link after confirmation. Expired, revoked, used,
+or deleted-team links cannot grant membership. A retry by the accepted recipient
+is idempotent while they remain a member; removing them prevents reuse. Existing
+members can open a valid link without consuming it or changing their role.
+
+Tokens contain 32 random bytes. Only their SHA-256 digests are stored; the raw
+token is returned once at creation and cannot be recovered by listing invitations.
+Keep the generated link before navigating away, or revoke it and create another.
+Anyone holding an active link can join, so share it with the intended teammate.
+Invite responses use `Cache-Control: no-store`, and the frontend disables referrers.
+
+Authenticated endpoints:
+
+- `GET/POST /api/invitations/` (admins only; list optionally filters by `organization`)
+- `GET /api/invitations/<id>/` (team admins only)
+- `POST /api/invitations/<id>/revoke/` (team admins only)
+- `POST /api/invitations/preview/` with `{token}` (preview without joining)
+- `POST /api/invitations/accept/` with `{token}` (join as a MEMBER)
+
+The list returns `{count, next, previous, results}` with 20 records per page.
+Creation returns invitation metadata plus `token` once. Preview/accept return the
+team name/ID, expiry, role, and whether the user was already a member. Invalid
+links return 400/404; unavailable links return 410. Organization and invitation
+locks plus a conditional claim keep acceptance and membership creation atomic.
+SQLite does not provide production row locking; verify concurrent joins on the
+production database before deployment. Treat invitation URLs as credentials and
+exclude their query strings from production access logs and analytics.
