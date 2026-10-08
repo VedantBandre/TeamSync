@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { ArchiveProjectDialog } from "./ArchiveProjectDialog";
 import { InvitationManager } from "./Invitations";
 import { TaskDiscussion } from "./TaskDiscussion";
 import { filterTasks, type DueFilter } from "../lib/taskFilters";
 import { priorities } from "../lib/types";
 import {
   ArrowRight,
+  Archive,
+  ArchiveRestore,
   CheckCheck,
   ChevronRight,
   CircleCheck,
@@ -34,6 +37,7 @@ import type {
   Membership,
   Task,
   TaskStatus,
+  Project,
   User,
   WorkspaceData,
 } from "../lib/types";
@@ -69,6 +73,10 @@ export function Workspace({
   const [assignee, setAssignee] = useState("all");
   const [due, setDue] = useState<DueFilter>("all");
   const [priority, setPriority] = useState("all");
+  const [archiveAction, setArchiveAction] = useState<{
+    project: Project;
+    restore: boolean;
+  } | null>(null);
   const [discussion, setDiscussion] = useState<Task | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [pending, setPending] = useState<number | null>(null);
@@ -94,7 +102,10 @@ export function Workspace({
   const { organization, project, tab, unavailable, canonical } =
     resolveWorkspaceRoute(location, data);
   const projects = data.projects.filter(
-    (item) => item.organization === organization?.id,
+    (item) => item.organization === organization?.id && !item.archived_at,
+  );
+  const archivedProjects = data.projects.filter(
+    (item) => item.organization === organization?.id && item.archived_at,
   );
   useEffect(() => {
     if (loaded && !unavailable) navigateWorkspace(canonical, true);
@@ -104,12 +115,15 @@ export function Workspace({
       ? "Workspace unavailable · TeamSync"
       : tab === "members"
         ? `${organization?.name || "Your team"} · Members · TeamSync`
-        : `${project?.name || organization?.name || "Your workspace"} · TeamSync`;
+        : tab === "archived"
+          ? `${organization?.name || "Your team"} · Archived projects · TeamSync`
+          : `${project?.name || organization?.name || "Your workspace"} · TeamSync`;
   }, [unavailable, tab, organization?.name, project?.name]);
   useEffect(() => {
     const reset = () => {
       setEditor(null);
       setDiscussion(null);
+      setArchiveAction(null);
       setQuery("");
       setMine(false);
       setAssignee("all");
@@ -174,7 +188,8 @@ export function Workspace({
           navigateWorkspace("/", true);
         } else if (deleted && resource === "projects" && id === project?.id) {
           const next = result.projects.find(
-            (item) => item.organization === organization?.id,
+            (item) =>
+              item.organization === organization?.id && !item.archived_at,
           );
           navigateWorkspace(workspaceLink(organization?.id, next?.id), true);
         } else if (!deleted && resource === "organizations" && id) {
@@ -225,13 +240,15 @@ export function Workspace({
     }
   }
   function selectTeam(value: number) {
-    const first = data.projects.find((item) => item.organization === value);
+    const first = data.projects.find(
+      (item) => item.organization === value && !item.archived_at,
+    );
     navigateWorkspace(workspaceLink(value, first?.id));
   }
   function selectProject(value: number) {
     navigateWorkspace(workspaceLink(organization?.id, value));
   }
-  function selectTab(value: "board" | "members") {
+  function selectTab(value: "board" | "members" | "archived") {
     navigateWorkspace(workspaceLink(organization?.id, project?.id, value));
   }
   const projectLink = project
@@ -311,6 +328,17 @@ export function Workspace({
             Team members
             {members.length > 0 && (
               <span className="nav-count">{members.length}</span>
+            )}
+          </button>
+          <button
+            className={`nav-item ${tab === "archived" ? "active" : ""}`}
+            onClick={() => selectTab("archived")}
+            disabled={!organization}
+          >
+            <Archive size={18} />
+            Archived projects
+            {archivedProjects.length > 0 && (
+              <span className="nav-count">{archivedProjects.length}</span>
             )}
           </button>
         </nav>
@@ -393,7 +421,13 @@ export function Workspace({
           <div className="breadcrumb">
             <span>{organization?.name || "Your workspace"}</span>
             <ChevronRight size={14} />
-            <strong>{tab === "members" ? "Team members" : "Projects"}</strong>
+            <strong>
+              {tab === "members"
+                ? "Team members"
+                : tab === "archived"
+                  ? "Archived projects"
+                  : "Projects"}
+            </strong>
           </div>
           <div className="topbar-right">
             <span className="today">
@@ -636,6 +670,84 @@ export function Workspace({
                 assign, and update tasks.
               </p>
             </>
+          ) : tab === "archived" ? (
+            <>
+              <section className="page-heading">
+                <div>
+                  <p className="eyebrow">
+                    <Archive size={14} />
+                    KEPT FOR LATER
+                  </p>
+                  <h1>Archived projects.</h1>
+                  <p className="muted">
+                    Finished work, with its tasks and conversations preserved.
+                  </p>
+                </div>
+              </section>
+              <section
+                className="archived-projects"
+                aria-label="Archived project list"
+              >
+                {archivedProjects.length === 0 ? (
+                  <p className="archive-empty">
+                    No archived projects in this team yet.
+                  </p>
+                ) : (
+                  archivedProjects.map((item) => (
+                    <article key={item.id} className="archived-project-card">
+                      <div>
+                        <h2>
+                          <a
+                            href={workspaceLink(item.organization, item.id)}
+                            onClick={(event) => {
+                              if (
+                                event.button === 0 &&
+                                !event.metaKey &&
+                                !event.ctrlKey &&
+                                !event.shiftKey &&
+                                !event.altKey
+                              ) {
+                                event.preventDefault();
+                                selectProject(item.id);
+                              }
+                            }}
+                          >
+                            {item.name}
+                          </a>
+                        </h2>
+                        <p>{item.description || "A project kept for later."}</p>
+                        <span>
+                          Archived{" "}
+                          <time dateTime={item.archived_at!}>
+                            {new Date(item.archived_at!).toLocaleDateString()}
+                          </time>
+                        </span>
+                      </div>
+                      <div className="heading-actions">
+                        <button
+                          className="button secondary"
+                          onClick={() => selectProject(item.id)}
+                        >
+                          View project
+                        </button>
+                        {isAdmin && (
+                          <button
+                            className="button secondary"
+                            aria-label={`Restore ${item.name}`}
+                            onClick={() =>
+                              setArchiveAction({ project: item, restore: true })
+                            }
+                          >
+                            <ArchiveRestore size={16} />
+                            Restore
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  ))
+                )}
+              </section>
+            </>
           ) : !project ? (
             <div className="large-empty onboarding">
               <span className="empty-illustration">
@@ -689,16 +801,18 @@ export function Workspace({
                   </button>
                   {isAdmin && (
                     <>
-                      <button
-                        className="icon-button"
-                        aria-label="Edit project"
-                        onClick={() =>
-                          setEditor({ kind: "project", item: project })
-                        }
-                        disabled={pending !== null}
-                      >
-                        <Pencil size={18} />
-                      </button>
+                      {!project.archived_at && (
+                        <button
+                          className="icon-button"
+                          aria-label="Edit project"
+                          onClick={() =>
+                            setEditor({ kind: "project", item: project })
+                          }
+                          disabled={pending !== null}
+                        >
+                          <Pencil size={18} />
+                        </button>
+                      )}
                       <button
                         className="icon-button"
                         aria-label="Delete project"
@@ -716,16 +830,48 @@ export function Workspace({
                       </button>
                     </>
                   )}
-                  <button
-                    className="button primary"
-                    onClick={() => openTask()}
-                    disabled={loading || pending !== null}
-                  >
-                    <Plus size={18} />
-                    New task
-                  </button>
+                  {isAdmin && (
+                    <button
+                      className="button secondary"
+                      onClick={() =>
+                        setArchiveAction({
+                          project,
+                          restore: !!project.archived_at,
+                        })
+                      }
+                      disabled={loading || pending !== null}
+                    >
+                      {project.archived_at ? (
+                        <ArchiveRestore size={16} />
+                      ) : (
+                        <Archive size={16} />
+                      )}
+                      {project.archived_at
+                        ? "Restore project"
+                        : "Archive project"}
+                    </button>
+                  )}
+                  {!project.archived_at && (
+                    <button
+                      className="button primary"
+                      onClick={() => openTask()}
+                      disabled={loading || pending !== null}
+                    >
+                      <Plus size={18} />
+                      New task
+                    </button>
+                  )}
                 </div>
               </section>
+              {project.archived_at && (
+                <p className="archive-banner" role="status">
+                  <Archive size={18} />
+                  This project is archived and read-only.{" "}
+                  {isAdmin
+                    ? "Restore it to continue working."
+                    : "Ask a team admin to restore it."}
+                </p>
+              )}
               {shareFeedback?.projectId === project.id && (
                 <div className="share-feedback" role="status">
                   {shareFeedback.copied ? (
@@ -870,6 +1016,7 @@ export function Workspace({
               )}
               <TaskBoard
                 tasks={visibleTasks}
+                readOnly={!!project.archived_at}
                 members={members}
                 pending={pending ?? (loading ? -1 : null)}
                 onDiscuss={setDiscussion}
@@ -903,10 +1050,31 @@ export function Workspace({
           )}
         </main>
       </div>
+      {archiveAction && (
+        <ArchiveProjectDialog
+          key={`${archiveAction.project.id}:${archiveAction.restore}`}
+          project={archiveAction.project}
+          restore={archiveAction.restore}
+          onClose={() =>
+            setArchiveAction((current) =>
+              current === archiveAction ? null : current,
+            )
+          }
+          onSaved={(saved) => {
+            setData((current) => ({
+              ...current,
+              projects: current.projects.map((item) =>
+                item.id === saved.id ? saved : item,
+              ),
+            }));
+          }}
+        />
+      )}
       {discussion && (
         <TaskDiscussion
           key={discussion.id}
           task={discussion}
+          readOnly={!!project?.archived_at}
           user={user}
           onClose={() => setDiscussion(null)}
         />

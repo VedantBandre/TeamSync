@@ -9,6 +9,8 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from projects.archiving import require_active_project
+
 from .models import Task, TaskActivity
 from .serializers import TaskSerializer, TaskCommentSerializer, TaskActivitySerializer
 
@@ -26,7 +28,11 @@ class TaskViewSet(viewsets.ModelViewSet):
         queryset = Task.objects.filter(
             project__organization__membership__user=self.request.user
         ).select_related("project__organization", "assigned_to")
-        if self.action in ("update", "partial_update", "comment_detail"):
+        writes = self.action in ("update", "partial_update", "destroy", "comment_detail") or (self.action == "comments" and self.request.method == "POST")
+        if writes:
+            reference = get_object_or_404(queryset, pk=self.kwargs["pk"])
+            # Lock project before task so archive/delete and task writes agree on order.
+            require_active_project(reference.project_id)
             queryset = queryset.select_for_update(of=("self",))
         return queryset
 
@@ -38,6 +44,7 @@ class TaskViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def perform_create(self, serializer):
+        require_active_project(serializer.validated_data["project"].pk)
         task = serializer.save()
         self.record(task, "CREATED")
 
@@ -54,6 +61,10 @@ class TaskViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
     def perform_update(self, serializer):
         before = self.snapshot(serializer.instance)
         task = serializer.save()
@@ -69,6 +80,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         return paginator.get_paginated_response(serializer(page, many=True).data)
 
     @action(detail=True, methods=["get", "post"])
+    @transaction.atomic
     def comments(self, request, pk=None):
         task = self.get_object()
         if request.method == "GET":

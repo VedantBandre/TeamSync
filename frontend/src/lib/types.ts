@@ -17,6 +17,7 @@ export interface Membership {
   role: "ADMIN" | "MEMBER";
 }
 export interface Project {
+  archived_at: string | null;
   id: number;
   name: string;
   description: string;

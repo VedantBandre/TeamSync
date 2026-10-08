@@ -183,3 +183,17 @@ it("retries initial loading and ignores responses from a closed task", async () 
     within(screen.getByRole("dialog")).queryByText("Ready to release"),
   ).not.toBeInTheDocument();
 });
+
+it("keeps archived discussion readable without comment write controls", async () => {
+  rows = [comment];
+  render(<TaskDiscussion task={task} user={user} readOnly onClose={vi.fn()} />);
+  expect(await screen.findByText("Ready to release")).toBeVisible();
+  expect(screen.queryByLabelText("Add a comment")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Edit comment" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Delete comment" }),
+  ).not.toBeInTheDocument();
+  expect(save).not.toHaveBeenCalled();
+});

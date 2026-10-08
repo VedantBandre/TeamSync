@@ -13,6 +13,7 @@ class Project(models.Model):
     description = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.name

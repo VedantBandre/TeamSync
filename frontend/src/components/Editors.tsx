@@ -134,7 +134,7 @@ export function EditorDialog({
               {editor.resource === "organizations"
                 ? "Its projects, tasks, and memberships will also be deleted."
                 : editor.resource === "projects"
-                  ? "All tasks in this project will also be deleted."
+                  ? "This permanently deletes the project, all its tasks, comments, and activity. Archive it instead if you want to keep this work."
                   : editor.resource === "memberships"
                     ? "This person will lose access to the team and their task assignments will be cleared."
                     : "This task will be permanently removed."}
