@@ -1,5 +1,10 @@
 # Deploy TeamSync with Vercel, Render, and Resend
 
+This is the selected deployment architecture: Vercel serves the frontend, and
+Render serves Django and its private PostgreSQL database. No Vercel Services
+configuration or service bindings are needed. The browser calls Render over HTTPS
+with bearer tokens. The current folder structure already supports this split.
+
 The frontend runs on Vercel; Django and PostgreSQL run on Render in Frankfurt.
 `render.yaml` is a reviewable deployment template, not evidence of a live deployment.
 It selects paid web/database compute with 1 GB database storage. Review Render's
@@ -23,12 +28,18 @@ so it does not depend on SMTP ports blocked by Render's free web services.
 
 ## 2. Reserve the frontend URL
 
-Import `VedantBandre/TeamSync` in Vercel. Choose **frontend** as Root Directory,
-Vite as framework, Node.js **24.x**, `npm run build`, and `dist`. Use a stable
+Import `VedantBandre/TeamSync` in Vercel. Choose **Vite**, not **Services**.
+Keep Root Directory at the repository root: root `vercel.json` explicitly installs
+with `npm --prefix frontend ci`, builds with `npm --prefix frontend run build`,
+and publishes `frontend/dist`. Set Node.js **24.x**. If the import suggestion says
+multiple services, change the Framework Preset to Vite before deploying.
+Alternatively, choosing **frontend** as Root Directory uses `frontend/vercel.json`
+with `npm run build` and `dist`; both configurations deploy only the frontend.
+Use a stable
 production URL or custom domain. The first build can run before the backend is
 available; set the real API URL and redeploy after step 3.
 
-`frontend/vercel.json` provides SPA fallback and response security headers.
+Both Vercel configurations provide SPA fallback and response security headers.
 Recovery links use URL fragments so their secrets are not sent to Vercel in HTTP
 requests. The app removes the fragment on opening, and requires explicit
 confirmation before consuming a link. If you refresh that confirmation screen,
@@ -36,7 +47,7 @@ reopen the link from the email.
 
 ## 3. Create the Render backend/database
 
-After merging the reviewed implementation to main, create a Render Blueprint
+After merging account security and the deployment configuration to main, create a Render Blueprint
 from this repository. Review the proposed compute/database costs and values.
 The service uses `backend` as its root, two Gunicorn workers, WhiteNoise for
 Django admin/static assets, PostgreSQL 17, and `/health/` for health checks.

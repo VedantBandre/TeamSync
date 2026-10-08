@@ -21,6 +21,12 @@ Vercel/Render/Resend configuration is prepared in this branch. Actual provider
 resources, delivery, backups/restore, and live smoke tests are not yet verified.
 See [deployment setup](VERCEL_RENDER.md).
 
+Selected hosting: Vercel for the frontend, Render for Django and private
+PostgreSQL, and Resend for recovery emails. The deployment import configuration is
+on `dev/deployment-setup`, based on `dev/account-security`; merge account security
+first, then this deployment follow-up. Live provisioning still requires provider
+access, private credentials, and approval of recurring hosting costs.
+
 ## Next milestones, in order
 
 1. **Deployment:** choose hosting/domain, configure a trusted HTTPS proxy,
