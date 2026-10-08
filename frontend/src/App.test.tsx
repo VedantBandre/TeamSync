@@ -12,6 +12,7 @@ const json = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status });
 
 beforeEach(() => {
+  document.documentElement.dataset.theme = "light";
   window.history.replaceState(null, "", "/");
   sessionStorage.clear();
   localStorage.clear();
@@ -58,7 +59,11 @@ beforeEach(() => {
       return json({ access: "access", refresh: "refresh" });
     if (url === "/api/register/")
       return json({ id: 1, username: "alice" }, 201);
-    if (url === "/api/me/") return json(user);
+    if (url === "/api/me/") {
+      if (options?.method === "PATCH")
+        Object.assign(user, JSON.parse(String(options.body)));
+      return json(user);
+    }
     if (url === "/api/tasks/" && options?.method === "POST") {
       const payload = JSON.parse(String(options.body));
       if (payload.title === "Rejected")
@@ -537,4 +542,50 @@ it("keeps the confirmation open when archiving fails", async () => {
   );
   expect(screen.getByRole("dialog")).toBeVisible();
   expect(data.projects[0].archived_at).toBeNull();
+});
+
+it("saves account details and updates the sidebar", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  await actor.click(screen.getByRole("button", { name: "My Account" }));
+  await actor.type(screen.getByLabelText("Display name"), "Alice Green");
+  await actor.type(screen.getByLabelText("Nickname"), "Ali");
+  await actor.click(screen.getByRole("button", { name: /Focusing/ }));
+  await actor.click(screen.getByRole("button", { name: "Save profile" }));
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "Your profile is saved.",
+  );
+  expect(user.display_name).toBe("Alice Green");
+  expect(screen.getByRole("button", { name: "My Account" })).toHaveTextContent(
+    "Focusing",
+  );
+});
+
+it("toggles dark mode and remembers the preference", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  await actor.click(screen.getByRole("button", { name: "Dark mode" }));
+  expect(document.documentElement.dataset.theme).toBe("dark");
+  expect(localStorage.getItem("teamsync.theme")).toBe("dark");
+  await actor.click(screen.getByRole("button", { name: "Dark mode" }));
+  expect(document.documentElement.dataset.theme).toBe("light");
+});
+
+it("preserves profile drafts when saving fails", async () => {
+  const actor = userEvent.setup();
+  await openWorkspace();
+  const original = fetchMock.getMockImplementation()!;
+  fetchMock.mockImplementation((path, options) =>
+    String(path) === "/api/me/" && options?.method === "PATCH"
+      ? Promise.resolve(json({ detail: "Could not save your profile." }, 503))
+      : original(path, options),
+  );
+  await actor.click(screen.getByRole("button", { name: "My Account" }));
+  await actor.type(screen.getByLabelText("Display name"), "Draft name");
+  await actor.click(screen.getByRole("button", { name: "Save profile" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "Could not save your profile.",
+  );
+  expect(screen.getByLabelText("Display name")).toHaveValue("Draft name");
+  expect(user.display_name).toBeUndefined();
 });

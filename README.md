@@ -306,3 +306,26 @@ Permanent deletion remains a separate confirmed admin action and removes the
 project's tasks, comments, and history. Archiving is the option for preserving work.
 Apply migrations after pulling this feature, including
 `projects/0002_project_archived_at`.
+
+
+### Appearance and My Account
+
+Use the sidebar's Dark mode toggle for a dark forest/mint palette. Light mode
+keeps the original colours. This browser remembers the choice across refreshes
+and sign-in sessions; the preference is local to this browser.
+
+Open **My Account** from the signed-in profile in the sidebar (`/?view=account`).
+Save a display name, nickname, photo, and an emoji/text status. Status presets and
+Clear status help update availability; status stays until explicitly changed.
+Names, photos, and status appear in the sidebar and the team member list. Other
+teammates see updates on their next workspace refresh.
+
+`GET/PATCH /api/me/` reads/updates the caller's own profile. Username, email, member
+ID, and permissions remain read-only. Existing accounts have empty profiles until
+edited. Photos accept JPEG, PNG, and WebP under 2 MB/16 megapixels; the server
+validates, crops, and re-encodes them as 256px JPEGs without source metadata using
+[Pillow](https://pillow.readthedocs.io/en/stable/reference/Image.html). Compact
+avatars are stored with profile records in the database and returned as data
+URLs, so no public upload directory or media hosting is needed for this feature.
+Team profile information follows existing membership visibility rules. Apply
+`accounts/0001_initial` after pulling this branch.

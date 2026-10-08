@@ -1,4 +1,11 @@
-export interface User {
+export interface Profile {
+  display_name?: string;
+  nickname?: string;
+  status?: string;
+  status_emoji?: string;
+  avatar?: string | null;
+}
+export interface User extends Profile {
   id: number;
   username: string;
   email: string;
@@ -10,6 +17,7 @@ export interface Organization {
   created_at: string;
 }
 export interface Membership {
+  profile?: Profile;
   id: number;
   user: number;
   username: string;

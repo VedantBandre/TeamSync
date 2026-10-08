@@ -34,7 +34,7 @@ class MembershipViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Membership.objects.filter(
             organization__membership__user=self.request.user
-        ).select_related("organization", "user")
+        ).select_related("organization", "user", "user__profile")
 
     def protect_last_admin(self, membership):
         # Serialize admin removals within an organization on databases with row locks.

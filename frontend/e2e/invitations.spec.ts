@@ -87,15 +87,57 @@ test("an admin invites a teammate through sign-in and can revoke unused links", 
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
     invitation,
   );
+  // Hold the second response so the previous link remains visible while saving.
+  // This reproduces the timing that made the old test revoke the first link.
+  let releaseResponse!: () => void;
+  let responseFetched!: () => void;
+  const responseGate = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+  const fetched = new Promise<void>((resolve) => {
+    responseFetched = resolve;
+  });
+  await page.route("**/api/invitations/", async (route) => {
+    const response = await route.fetch();
+    responseFetched();
+    await responseGate;
+    await route.fulfill({ response });
+  });
+  const createdResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/invitations/",
+  );
+  const invitationLink = page.getByLabel("Invitation link", { exact: true });
+  try {
+    await page
+      .getByRole("button", { name: "Create invitation", exact: true })
+      .click();
+    await fetched;
+    await expect(invitationLink).toHaveValue(invitation);
+    await expect(
+      page.getByRole("button", { name: "Create invitation", exact: true }),
+    ).toBeDisabled();
+  } finally {
+    releaseResponse();
+  }
+  const response = await createdResponse;
+  expect(response.status()).toBe(201);
+  const secondInvitation = (await response.json()) as {
+    id: number;
+    token: string;
+  };
+  const revokedUrl = new URL("/", page.url());
+  revokedUrl.searchParams.set("invite", secondInvitation.token);
+  await expect(invitationLink).toHaveValue(revokedUrl.href);
+  const revoked = await invitationLink.inputValue();
+  expect(revoked).not.toBe(invitation);
+  await page.unroute("**/api/invitations/");
   await page
-    .getByRole("button", { name: "Create invitation", exact: true })
-    .click();
-  const revoked = await page
-    .getByLabel("Invitation link", { exact: true })
-    .inputValue();
-  await page
-    .getByRole("button", { name: /^Revoke invitation/ })
-    .first()
+    .getByRole("button", {
+      name: `Revoke invitation ${secondInvitation.id}`,
+      exact: true,
+    })
     .click();
   await page
     .getByRole("button", { name: "Confirm revoke", exact: true })

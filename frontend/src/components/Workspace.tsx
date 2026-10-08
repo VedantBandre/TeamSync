@@ -1,3 +1,5 @@
+import { Account } from "./Account";
+import { ThemeToggle } from "./ThemeToggle";
 import { useEffect, useState } from "react";
 import { ArchiveProjectDialog } from "./ArchiveProjectDialog";
 import { InvitationManager } from "./Invitations";
@@ -55,8 +57,10 @@ const emptyData: WorkspaceData = {
 export function Workspace({
   user,
   onLogout,
+  onUserChanged,
 }: {
   user: User;
+  onUserChanged: (user: User) => void;
   onLogout: () => void;
 }) {
   const [data, setData] = useState<WorkspaceData>(emptyData);
@@ -113,11 +117,13 @@ export function Workspace({
   useEffect(() => {
     document.title = unavailable
       ? "Workspace unavailable · TeamSync"
-      : tab === "members"
-        ? `${organization?.name || "Your team"} · Members · TeamSync`
-        : tab === "archived"
-          ? `${organization?.name || "Your team"} · Archived projects · TeamSync`
-          : `${project?.name || organization?.name || "Your workspace"} · TeamSync`;
+      : tab === "account"
+        ? "My Account · TeamSync"
+        : tab === "members"
+          ? `${organization?.name || "Your team"} · Members · TeamSync`
+          : tab === "archived"
+            ? `${organization?.name || "Your team"} · Archived projects · TeamSync`
+            : `${project?.name || organization?.name || "Your workspace"} · TeamSync`;
   }, [unavailable, tab, organization?.name, project?.name]);
   useEffect(() => {
     const reset = () => {
@@ -248,7 +254,7 @@ export function Workspace({
   function selectProject(value: number) {
     navigateWorkspace(workspaceLink(organization?.id, value));
   }
-  function selectTab(value: "board" | "members" | "archived") {
+  function selectTab(value: "board" | "members" | "archived" | "account") {
     navigateWorkspace(workspaceLink(organization?.id, project?.id, value));
   }
   const projectLink = project
@@ -391,6 +397,7 @@ export function Workspace({
           )}
         </nav>
         <div className="sidebar-bottom">
+          <ThemeToggle />
           <div className="sidebar-note">
             <div className="note-icon">
               <CheckCheck size={21} />
@@ -399,13 +406,32 @@ export function Workspace({
             <p>Small moves make great projects.</p>
           </div>
           <div className="profile">
-            <span className="avatar">
-              {user.username.slice(0, 2).toUpperCase()}
-            </span>
-            <div>
-              <strong>{user.username}</strong>
-              <span>Member ID: {user.id}</span>
-            </div>
+            <button
+              className="profile-link"
+              onClick={() => selectTab("account")}
+              aria-label="My Account"
+              title="My Account"
+            >
+              <span className="avatar">
+                {user.avatar ? (
+                  <img src={user.avatar} alt="" />
+                ) : (
+                  (user.display_name || user.nickname || user.username)
+                    .slice(0, 2)
+                    .toUpperCase()
+                )}
+              </span>
+              <span className="profile-copy">
+                <strong>
+                  {user.display_name || user.nickname || user.username}
+                </strong>
+                <span>
+                  {user.status
+                    ? `${user.status_emoji || ""} ${user.status}`
+                    : `Member ID: ${user.id}`}
+                </span>
+              </span>
+            </button>
             <button
               className="icon-button"
               onClick={onLogout}
@@ -422,11 +448,13 @@ export function Workspace({
             <span>{organization?.name || "Your workspace"}</span>
             <ChevronRight size={14} />
             <strong>
-              {tab === "members"
-                ? "Team members"
-                : tab === "archived"
-                  ? "Archived projects"
-                  : "Projects"}
+              {tab === "account"
+                ? "My Account"
+                : tab === "members"
+                  ? "Team members"
+                  : tab === "archived"
+                    ? "Archived projects"
+                    : "Projects"}
             </strong>
           </div>
           <div className="topbar-right">
@@ -469,6 +497,21 @@ export function Workspace({
                 Try again
               </button>
             </div>
+          ) : tab === "account" && !unavailable ? (
+            <Account
+              user={user}
+              onSaved={(saved) => {
+                onUserChanged(saved);
+                setData((current) => ({
+                  ...current,
+                  memberships: current.memberships.map((member) =>
+                    member.user === saved.id
+                      ? { ...member, profile: saved }
+                      : member,
+                  ),
+                }));
+              }}
+            />
           ) : unavailable ? (
             <div className="large-empty">
               <span className="empty-illustration">
@@ -598,9 +641,30 @@ export function Workspace({
                           <td>
                             <div className="member-name">
                               <span className="avatar">
-                                {member.username.slice(0, 2).toUpperCase()}
+                                {member.profile?.avatar ? (
+                                  <img src={member.profile.avatar} alt="" />
+                                ) : (
+                                  (
+                                    member.profile?.display_name ||
+                                    member.username
+                                  )
+                                    .slice(0, 2)
+                                    .toUpperCase()
+                                )}
                               </span>
-                              <strong>{member.username}</strong>
+                              <div>
+                                <strong>
+                                  {member.profile?.display_name ||
+                                    member.profile?.nickname ||
+                                    member.username}
+                                </strong>
+                                {member.profile?.status && (
+                                  <p className="member-status">
+                                    {member.profile.status_emoji}{" "}
+                                    {member.profile.status}
+                                  </p>
+                                )}
+                              </div>
                               {member.user === user.id && (
                                 <span className="pill">You</span>
                               )}

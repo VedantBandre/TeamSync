@@ -115,3 +115,6 @@ STATIC_URL = 'static/'
 from .environment import configuration
 
 globals().update(configuration(BASE_DIR))
+
+# Bounded JSON photo upload: the decoded image limit is 2 MB.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024

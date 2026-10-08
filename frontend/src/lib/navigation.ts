@@ -4,7 +4,7 @@ import type { Organization, Project, WorkspaceData } from "./types";
 export interface WorkspaceRoute {
   teamId: number | null;
   projectId: number | null;
-  tab: "board" | "members" | "archived";
+  tab: "board" | "members" | "archived" | "account";
   invalid: boolean;
 }
 
@@ -30,18 +30,21 @@ export function parseWorkspaceRoute(location: string): WorkspaceRoute {
   const views = url.searchParams.getAll("view");
   if (
     views.length > 1 ||
-    (views.length && !["board", "members", "archived"].includes(views[0]))
+    (views.length &&
+      !["board", "members", "archived", "account"].includes(views[0]))
   )
     invalid = true;
   return {
     teamId,
     projectId,
     tab:
-      views[0] === "members"
-        ? "members"
-        : views[0] === "archived"
-          ? "archived"
-          : "board",
+      views[0] === "account"
+        ? "account"
+        : views[0] === "members"
+          ? "members"
+          : views[0] === "archived"
+            ? "archived"
+            : "board",
     invalid,
   };
 }

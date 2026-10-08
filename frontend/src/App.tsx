@@ -89,7 +89,7 @@ export default function App() {
         onLogout={clearSession}
       />
     ) : (
-      <Workspace user={user} onLogout={clearSession} />
+      <Workspace user={user} onUserChanged={setUser} onLogout={clearSession} />
     )
   ) : (
     <AuthScreen
