@@ -196,3 +196,24 @@ opening its final pull request.
 Project navigation changes are isolated on `dev/project-navigation`, based on
 `dev/frontend-workflow`. Review this branch against the frontend branch until
 that work is merged into `main`.
+
+
+### Task controls
+
+Tasks have Low, Medium (default), High, or Urgent priority. Existing tasks receive
+Medium priority when the migration runs. Create/edit dialogs save priorities via
+the API, and cards display a priority badge.
+
+Combine search, assignee, priority, and deadline filters; Clear filters restores
+all tasks. Assigned to me and the assignee selector replace each other. Overdue
+means the deadline has passed; Due today uses your local calendar day; Next 7 days
+covers upcoming deadlines until midnight seven calendar days from today.
+Completed tasks are excluded from these deadline views. No due date includes
+completed tasks. Filters reset when navigating between projects.
+
+On desktop, drag a card using its grip into another column. Status dropdowns work
+with keyboards and touch devices. Moves are shown only after the server saves
+successfully; failed moves retain the original status and display an error.
+
+`dev/task-controls` builds on `dev/project-navigation`; review the task controls
+against that branch until the earlier work reaches `main`.

@@ -589,7 +589,23 @@ progress::-moz-progress-bar {
 .board-filters {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.board-filters select {
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
+  height: 34px;
+  font-size: 11px;
+  padding: 5px 9px;
+  border: 1px solid #e0e6dc;
+  border-radius: 7px;
+  background: #fff;
+  color: #4a5b43;
+  font-family: inherit;
 }
 .mine-filter {
   display: inline-flex;
@@ -1570,5 +1586,72 @@ td select {
 @media (max-width: 1100px) {
   .page-heading {
     flex-wrap: wrap;
+  }
+}
+
+.task-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.task-drag-handle {
+  display: inline-flex;
+  cursor: grab;
+  padding: 4px;
+}
+.task-drag-handle:active {
+  cursor: grabbing;
+}
+.board-column.drop-target {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.priority-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 5px;
+  margin: 10px 0 3px;
+  background: #eef1eb;
+  color: #505e48;
+}
+.priority-high {
+  background: #fff0d1;
+  color: #805000;
+}
+.priority-urgent {
+  background: #ffe6e1;
+  color: #a12a1b;
+}
+.priority-low {
+  background: #eaf1f6;
+  color: #385c75;
+}
+@media (pointer: coarse) {
+  .task-drag-handle {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .board-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+  .board-filters select {
+    width: 100%;
+  }
+  .mine-filter,
+  .board-filters .search-field {
+    grid-column: 1 / -1;
+  }
+  .board-filters .search-field input {
+    width: 100%;
+    min-width: 0;
+  }
+  .task-drag-handle {
+    display: none;
   }
 }

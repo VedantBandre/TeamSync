@@ -9,32 +9,38 @@ class Task(models.Model):
         ("IN_PROGRESS", "In Progress"),
         ("DONE","Done")
     ]
-    
+
     project = models.ForeignKey(
-        Project, 
-        on_delete=models.CASCADE, 
+        Project,
+        on_delete=models.CASCADE,
         related_name="tasks"
     )
 
     title = models.CharField(max_length=200)
 
     description = models.TextField(blank=True)
-    
+
     assigned_to = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True
     )
-    
+
     status = models.CharField(
-        max_length=20, 
-        choices=STATUS_CHOICES, 
+        max_length=20,
+        choices=STATUS_CHOICES,
         default="TODO"
     )
 
+    priority = models.CharField(
+        max_length=10,
+        choices=[("LOW", "Low"), ("MEDIUM", "Medium"), ("HIGH", "High"), ("URGENT", "Urgent")],
+        default="MEDIUM",
+    )
+
     due_date = models.DateTimeField(
-        null=True, 
+        null=True,
         blank=True
     )
 
@@ -43,5 +49,5 @@ class Task(models.Model):
     )
 
     def __str__(self):
-        return self.title  
-    
+        return self.title
+

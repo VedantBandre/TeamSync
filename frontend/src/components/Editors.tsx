@@ -7,7 +7,7 @@ import type {
   Task,
   TaskStatus,
 } from "../lib/types";
-import { statuses } from "../lib/types";
+import { priorities, statuses } from "../lib/types";
 import { Dialog } from "./Dialog";
 import { ErrorNotice, Field, SubmitButton } from "./Form";
 
@@ -95,6 +95,7 @@ export function EditorDialog({
               ? Number(values.get("assigned_to"))
               : null,
             status: values.get("status"),
+            priority: values.get("priority"),
             due_date: date ? new Date(date).toISOString() : null,
             ...(!item ? { project: project!.id } : {}),
           };
@@ -247,6 +248,20 @@ export function EditorDialog({
                       </select>
                     </Field>
                   </div>
+                  <Field label="Priority" name="priority" error={error}>
+                    <select
+                      id="priority"
+                      name="priority"
+                      defaultValue={task?.priority || "MEDIUM"}
+                      aria-describedby="priority-error"
+                    >
+                      {priorities.map((priority) => (
+                        <option key={priority.value} value={priority.value}>
+                          {priority.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
                   <Field
                     label="Due date (optional)"
                     name="due_date"
