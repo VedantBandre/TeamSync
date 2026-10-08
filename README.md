@@ -165,7 +165,7 @@ From the repository root:
 ```sh
 backend/venv/bin/python backend/manage.py check
 backend/venv/bin/python backend/manage.py makemigrations --check --dry-run
-backend/venv/bin/python backend/manage.py test accounts organizations projects tasks
+backend/venv/bin/python backend/manage.py test accounts organizations projects tasks config
 ```
 
 The tests use a separate disposable database and cover authentication, the team
@@ -179,18 +179,16 @@ Use `dev/<topic>` branches for development and `fix/<topic>` branches for focuse
 bug fixes. Keep `main` as the integration branch. Run the checks above, review the
 diff, commit the related change, and open a pull request into `main`.
 
-The current settings are for local development, with DEBUG enabled, a development
-secret key, and permissive CORS. Before public deployment, configure secrets,
-allowed hosts/origins, HTTPS, and abuse protection for authentication endpoints.
-SQLite does not provide the row locking used to serialize concurrent admin
-removals; verify concurrency behavior on a production database such as PostgreSQL
-before deployment. Email verification, password reset, and production deployment
-are future work. The frontend currently loads all accessible records; pagination
-and server-side board filters are future improvements for larger workspaces.
+Local development defaults to SQLite and DEBUG enabled. Production configuration
+is environment-based, requires a private secret and explicit hosts, disables DEBUG,
+and requires PostgreSQL. See [deployment instructions](docs/DEPLOYMENT.md) and
+[the development roadmap](docs/ROADMAP.md). Public hosting, authentication abuse
+protection, email verification/recovery, and provider-specific backups/monitoring
+remain separate milestones. Pagination and server-side filters are future work.
 
-The backend workflow, frontend workspace, project navigation, task controls, and
-task discussion are integrated into `main`. Start new development branches from
-an updated `main`; the invitation feature has also merged. Project archiving is on `dev/project-archiving`.
+Core workflows, invitations, and project archiving are integrated into `main`.
+The deployment foundation is on `dev/deployment-foundation`. Start new development
+branches from updated `main`.
 
 ### Task controls
 
