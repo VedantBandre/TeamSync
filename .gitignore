@@ -37,3 +37,7 @@ yarn-error.log*
 frontend/test-results/
 frontend/playwright-report/
 backend/.e2e.sqlite3*
+
+# Keep environment-specific secrets private; commit examples only.
+.env.*
+!.env.example
