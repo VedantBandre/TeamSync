@@ -21,6 +21,25 @@ class SecurityTests(APITestCase):
         self.user = User.objects.create_user(username="owner", email="legacy@example.com", password=self.old)
         self.other = User.objects.create_user(username="other", email="legacy@example.com", password=self.old)
 
+    @override_settings(EMAIL_RECOVERY_AVAILABLE=False, EMAIL_BACKEND="accounts.email_backend.DisabledBackend")
+    def test_no_email_setup_preserves_password_change_and_rejects_delivery(self):
+        tokens = self.login()
+        self.authenticate(tokens)
+        self.assertFalse(self.client.get("/api/me/").data["email_recovery_available"])
+        response = self.client.post("/api/email/verify/request/", {"email": "owner@example.com", "password": self.old})
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(EmailChallenge.objects.filter(user=self.user).exists())
+        response = self.client.post("/api/password/change/", {"current_password": self.old, "new_password": self.new, "confirm_password": self.new})
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(self.client.get("/api/me/").status_code, 401)
+        self.client.credentials()
+        RecoveryEmail.objects.create(user=self.user, email="owner@example.com")
+        known = self.client.post("/api/password/reset/request/", {"email": "owner@example.com"})
+        unknown = self.client.post("/api/password/reset/request/", {"email": "unknown@example.com"})
+        self.assertEqual(known.status_code, 503)
+        self.assertEqual(unknown.status_code, known.status_code)
+        self.assertEqual(unknown.data, known.data)
+
     def login(self, user=None):
         user = user or self.user
         response = self.client.post("/api/token/", {"username": user.username, "password": self.old})

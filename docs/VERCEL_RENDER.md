@@ -24,6 +24,18 @@ authorized. This is a free demo deployment, with these provider limits:
 
 ## 1. Prepare email delivery
 
+Email setup is optional for the first deployment. The Blueprint explicitly sets
+`EMAIL_DELIVERY=disabled`, so no sender or Resend key is needed to start the API.
+Sign-in, logout, profile editing and authenticated password changes still work.
+My Account explains that email recovery is not configured. Recovery email requests
+return a clear unavailable response, not a claim that a message was sent. Tokens
+are not written to files or logs in this mode.
+
+To enable email later, follow the steps below, set `DEFAULT_FROM_EMAIL` and
+`RESEND_API_KEY` privately in Render, change `EMAIL_DELIVERY` to `resend` in the
+Blueprint and service environment, then redeploy. Missing credentials in Resend
+mode stop startup. The next `/api/me/` response enables the account recovery form.
+
 Create a Resend account. Add a domain you control in its Domains screen and add
 its required DNS records at your domain provider. Wait for Resend to verify the
 sending domain. Create a sending API key and keep it in Render's private environment
@@ -74,18 +86,21 @@ Enter the prompted private configuration:
 | Variable | Value |
 | --- | --- |
 | `DJANGO_SECRET_KEY` | Privately generated random Django key, at least 50 characters |
-| `DJANGO_ALLOWED_HOSTS` | Exact Render backend hostname, e.g. `teamsync-api-abc.onrender.com` |
-| `FRONTEND_ORIGIN` | Stable HTTPS frontend origin, e.g. `https://teamsync.vercel.app` |
-| `DJANGO_CORS_ALLOWED_ORIGINS` | The same exact frontend origin |
-| `DEFAULT_FROM_EMAIL` | Your verified Resend sender (or restricted test sender above) |
-| `RESEND_API_KEY` | Your private sending key |
+
+The Blueprint already sets `FRONTEND_ORIGIN` and `DJANGO_CORS_ALLOWED_ORIGINS`
+to `https://team-sync-omega-ruby.vercel.app`. Update both if the frontend changes.
+There is no initial `DJANGO_ALLOWED_HOSTS` prompt: Render automatically supplies
+`RENDER_EXTERNAL_HOSTNAME` during builds and runtime, and Django adds that exact
+hostname when `RENDER=true`. Wildcards and malformed provider hostnames are
+rejected. If you add a custom API domain later, set its exact hostname in
+`DJANGO_ALLOWED_HOSTS`; the original Render hostname remains allowed too.
 
 The Blueprint injects database credentials from its private Render database.
 External database connections are disabled by default. No existing SQLite data
 is automatically transferred. `DJANGO_TRUST_PROXY=true` is for Render's managed
 HTTPS proxy only; do not reuse it behind an unsanitized proxy. Render may assign a
 suffix to the service hostname: use the actual hostname displayed in its dashboard
-and redeploy if the initial value differs. Keep secrets stable between releases.
+for the Vercel API URL. Keep secrets stable between releases.
 
 The API rate limiter uses database counters shared across workers and
 `REMOTE_ADDR`, ignoring untrusted forwarded headers. Behind Render this may group
@@ -105,9 +120,12 @@ have API access unless their exact origins are explicitly configured.
 
 ## 5. Verify the live application
 
-Open the Vercel URL and create an account. In My Account, request a recovery email
-and verify it. Sign out, request a password reset, follow the email, and sign in
-with the new password. Confirm logout and reset reject old sessions. Check dark
+Open the Vercel URL and create an account. Check sign-in, sign-out, profile editing,
+and authenticated password change (which signs out every session). When email is
+disabled, confirm My Account states recovery is not configured and no verification
+form appears. After enabling Resend, request and verify a recovery email, then
+request a password reset and sign in with the new password. Confirm logout and
+reset reject old sessions. Check dark
 mode, project links, invitations, task updates, and archive/restore on a phone.
 Check `https://<render-host>/health/` returns `{"status":"ok"}` and `/admin/`
 loads its static styles. Use the dashboard's deploy logs without enabling request

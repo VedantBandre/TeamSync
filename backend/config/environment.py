@@ -1,5 +1,6 @@
 """Environment configuration shared by development, CI, and production."""
 import os
+import re
 from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
@@ -33,6 +34,13 @@ def configuration(base_dir, environ=None):
     debug = boolean("DJANGO_DEBUG", not production)
     secret = env.get("DJANGO_SECRET_KEY", DEVELOPMENT_SECRET if not production else "")
     hosts = items("DJANGO_ALLOWED_HOSTS", "" if production else "localhost,127.0.0.1,[::1]")
+    # Render supplies this at build time and runtime; never derive it from requests.
+    render_host = env.get("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+    if env.get("RENDER") == "true" and render_host:
+        if not re.fullmatch(r"[a-z0-9][a-z0-9-]*\.onrender\.com", render_host):
+            raise ImproperlyConfigured("RENDER_EXTERNAL_HOSTNAME must be one exact onrender.com hostname.")
+        if render_host not in hosts:
+            hosts.append(render_host)
     if production:
         if debug:
             raise ImproperlyConfigured("DJANGO_DEBUG cannot be enabled in production.")
@@ -96,14 +104,19 @@ def configuration(base_dir, environ=None):
     if len(frontend) != 1:
         raise ImproperlyConfigured("FRONTEND_ORIGIN must be one explicit frontend origin.")
     delivery = env.get("EMAIL_DELIVERY", "resend" if production else "file")
-    if delivery not in ("file", "resend") or (production and delivery != "resend"):
-        raise ImproperlyConfigured("Production requires EMAIL_DELIVERY=resend.")
-    sender = env.get("DEFAULT_FROM_EMAIL", "" if production else "teamsync@localhost")
+    if delivery not in ("file", "resend", "disabled") or (production and delivery == "file"):
+        raise ImproperlyConfigured("Production requires EMAIL_DELIVERY=resend or disabled.")
+    sender = env.get("DEFAULT_FROM_EMAIL", "" if production and delivery != "disabled" else "teamsync@localhost")
     if not sender or "\n" in sender or "\r" in sender:
         raise ImproperlyConfigured("DEFAULT_FROM_EMAIL is required and cannot contain newlines.")
     config.update({
         "FRONTEND_ORIGIN": frontend[0], "DEFAULT_FROM_EMAIL": sender,
-        "EMAIL_BACKEND": "accounts.email_backend.ResendBackend" if delivery == "resend" else "django.core.mail.backends.filebased.EmailBackend",
+        "EMAIL_BACKEND": {
+            "resend": "accounts.email_backend.ResendBackend",
+            "file": "django.core.mail.backends.filebased.EmailBackend",
+            "disabled": "accounts.email_backend.DisabledBackend",
+        }[delivery],
+        "EMAIL_RECOVERY_AVAILABLE": delivery != "disabled",
         "EMAIL_FILE_PATH": base_dir / ".emails",
         "RESEND_API_KEY": required("RESEND_API_KEY") if delivery == "resend" else "",
     })

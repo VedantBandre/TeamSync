@@ -353,7 +353,10 @@ Local email delivery writes private MIME files in `backend/.emails/` (ignored by
 Git), not the console. Open the decoded text link from the file to test recovery.
 Production email uses Resend's HTTPS API. See the
 [Vercel/Render/Resend setup guide](docs/VERCEL_RENDER.md) for hosting and sender
-configuration. Frontend origin, sender, and Resend key are mandatory in production.
+configuration. Frontend origin is mandatory in production. Sender and Resend key
+are required when email is enabled. The free Render Blueprint starts with
+`EMAIL_DELIVERY=disabled`, allowing deployment before provider setup; My Account
+shows that recovery is unavailable while password changes remain available.
 
 Endpoints:
 

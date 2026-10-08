@@ -4,6 +4,7 @@ from io import BytesIO
 import warnings
 
 from PIL import Image, ImageOps
+from django.conf import settings
 from .models import Profile
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -36,7 +37,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     def to_representation(self, user):
         return {"id": user.pk, "username": user.username, "email": user.email,
-                "email_verified": hasattr(user, "recovery_email"), **profile_data(user)}
+                "email_verified": hasattr(user, "recovery_email"),
+                "email_recovery_available": settings.EMAIL_RECOVERY_AVAILABLE, **profile_data(user)}
 
     def validate_avatar(self, value):
         if value is None:

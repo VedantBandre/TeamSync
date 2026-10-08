@@ -73,6 +73,27 @@ class EnvironmentTests(SimpleTestCase):
         settings = configuration(Path("/app"), self.production(DJANGO_ENV="development", DB_ENGINE="postgresql"))
         self.assertEqual(settings["DATABASES"]["default"]["OPTIONS"]["sslmode"], "disable")
 
+    def test_render_assigns_an_exact_host_without_manual_configuration(self):
+        env = self.production(DJANGO_ALLOWED_HOSTS="", RENDER="true", RENDER_EXTERNAL_HOSTNAME="teamsync-api-abc.onrender.com")
+        self.assertEqual(configuration(Path("/app"), env)["ALLOWED_HOSTS"], ["teamsync-api-abc.onrender.com"])
+        env["DJANGO_ALLOWED_HOSTS"] = "api.example.com"
+        self.assertEqual(configuration(Path("/app"), env)["ALLOWED_HOSTS"], ["api.example.com", "teamsync-api-abc.onrender.com"])
+        for host in ("*", "https://teamsync.onrender.com", "teamsync.onrender.com/path", "attacker.example.com"):
+            with self.subTest(host=host), self.assertRaises(ImproperlyConfigured):
+                configuration(Path("/app"), self.production(DJANGO_ALLOWED_HOSTS="", RENDER="true", RENDER_EXTERNAL_HOSTNAME=host))
+        with self.assertRaises(ImproperlyConfigured):
+            configuration(Path("/app"), self.production(DJANGO_ALLOWED_HOSTS="", RENDER_EXTERNAL_HOSTNAME="teamsync.onrender.com"))
+
+    def test_email_can_be_explicitly_disabled_without_provider_credentials(self):
+        env = self.production(EMAIL_DELIVERY="disabled")
+        del env["RESEND_API_KEY"]
+        del env["DEFAULT_FROM_EMAIL"]
+        settings = configuration(Path("/app"), env)
+        self.assertFalse(settings["EMAIL_RECOVERY_AVAILABLE"])
+        self.assertEqual(settings["EMAIL_BACKEND"], "accounts.email_backend.DisabledBackend")
+        self.assertEqual(settings["RESEND_API_KEY"], "")
+        self.assertEqual(settings["DATABASES"]["default"]["OPTIONS"]["sslmode"], "require")
+
 
 class HealthTests(SimpleTestCase):
     def test_health_does_not_expose_database_details(self):
