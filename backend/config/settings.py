@@ -50,8 +50,23 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "accounts.authentication.SessionAuthentication",
     )
+}
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "CHECK_REVOKE_TOKEN": True,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+}
+PASSWORD_RESET_TIMEOUT = 3600
+AUTH_RATE_LIMITS = {
+    "login_ip": (30, 60), "login_account": (10, 600),
+    "register_ip": (10, 3600), "refresh_ip": (120, 60),
+    "reset_ip": (10, 3600), "reset_email": (5, 3600),
+    "verify_ip": (10, 3600), "security_ip": (30, 3600),
 }
 
 ROOT_URLCONF = 'config.urls'
@@ -118,3 +133,10 @@ globals().update(configuration(BASE_DIR))
 
 # Bounded JSON photo upload: the decoded image limit is 2 MB.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 3 * 1024 * 1024
+
+if not DEBUG:
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }

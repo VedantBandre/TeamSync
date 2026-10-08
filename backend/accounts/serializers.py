@@ -35,7 +35,8 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "username", "email"]
 
     def to_representation(self, user):
-        return {"id": user.pk, "username": user.username, "email": user.email, **profile_data(user)}
+        return {"id": user.pk, "username": user.username, "email": user.email,
+                "email_verified": hasattr(user, "recovery_email"), **profile_data(user)}
 
     def validate_avatar(self, value):
         if value is None:
@@ -69,7 +70,7 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegistrationSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, trim_whitespace=False)
+    password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=256)
 
     class Meta:
         model = User

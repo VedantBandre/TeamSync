@@ -188,3 +188,8 @@ export async function loadWorkspace(): Promise<WorkspaceData> {
 export function save<T>(path: string, payload: unknown, method = "POST") {
   return request<T>(path, { method, body: JSON.stringify(payload) });
 }
+
+export async function logout() {
+  await request("/logout/", { method: "POST" });
+  clearSession();
+}

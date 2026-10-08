@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Camera, UserRound } from "lucide-react";
 import type { User } from "../lib/types";
 import { save } from "../lib/api";
+import { AccountSecurity } from "./AccountSecurity";
 import { ErrorNotice, SubmitButton } from "./Form";
 
 export function Account({
@@ -262,6 +263,7 @@ export function Account({
           </SubmitButton>
         </div>
       </form>
+      <AccountSecurity user={user} />
     </>
   );
 }

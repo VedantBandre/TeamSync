@@ -41,3 +41,7 @@ backend/.e2e.sqlite3*
 # Keep environment-specific secrets private; commit examples only.
 .env.*
 !.env.example
+
+# Private local account emails contain one-use recovery links.
+backend/.emails/
+backend/.e2e-emails/

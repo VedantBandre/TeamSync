@@ -4,9 +4,12 @@ from rest_framework import generics
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
 from .serializers import RegistrationSerializer, UserSerializer
+from .throttling import AccountThrottle
 
 
 class RegisterView(generics.CreateAPIView):
+    throttle_classes = [AccountThrottle]
+    auth_scope = "register"
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = RegistrationSerializer

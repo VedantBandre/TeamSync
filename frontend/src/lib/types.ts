@@ -9,6 +9,7 @@ export interface User extends Profile {
   id: number;
   username: string;
   email: string;
+  email_verified?: boolean;
 }
 export interface Organization {
   id: number;

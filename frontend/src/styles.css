@@ -2404,3 +2404,13 @@ td select {
     grid-template-columns: 80px 1fr;
   }
 }
+
+.recovery-page {
+  display: block;
+}
+.recovery-page .auth-form-section {
+  min-height: 100vh;
+}
+.account-card + .account-card {
+  margin-top: 24px;
+}

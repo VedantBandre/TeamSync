@@ -14,6 +14,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from .health import health
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
@@ -25,7 +26,8 @@ from organizations.invitations import InvitationViewSet, InvitationLookupView, I
 from projects.views import ProjectViewSet
 from tasks.views import TaskViewSet
 
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from accounts.security import (LoginView, RefreshView, LogoutView, PasswordChangeView,
+    VerifyRequestView, VerifyConfirmView, ResetRequestView, ResetConfirmView)
 
 router = DefaultRouter()
 router.register(r"organizations", OrganizationViewSet)
@@ -36,6 +38,7 @@ router.register(r"invitations", InvitationViewSet)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('health/', health),
 ]
 
 urlpatterns += [
@@ -43,8 +46,14 @@ urlpatterns += [
     path("api/invitations/accept/", InvitationAcceptView.as_view()),
     path("api/register/", RegisterView.as_view(), name="register"),
     path("api/me/", CurrentUserView.as_view(), name="current-user"),
-    path("api/token/", TokenObtainPairView.as_view()),
-    path("api/token/refresh/", TokenRefreshView.as_view()),
+    path("api/token/", LoginView.as_view()),
+    path("api/token/refresh/", RefreshView.as_view()),
+    path("api/logout/", LogoutView.as_view()),
+    path("api/password/change/", PasswordChangeView.as_view()),
+    path("api/email/verify/request/", VerifyRequestView.as_view()),
+    path("api/email/verify/confirm/", VerifyConfirmView.as_view()),
+    path("api/password/reset/request/", ResetRequestView.as_view()),
+    path("api/password/reset/confirm/", ResetConfirmView.as_view()),
 ]
 
 urlpatterns += [path("api/", include(router.urls))]
