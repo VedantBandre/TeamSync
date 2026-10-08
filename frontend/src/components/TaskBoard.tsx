@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   GripVertical,
+  MessageSquare,
   Circle,
   CircleCheck,
   CircleDashed,
@@ -16,6 +17,7 @@ export function TaskBoard({
   tasks,
   members,
   pending,
+  onDiscuss,
   onEdit,
   onDelete,
   onStatus,
@@ -24,6 +26,7 @@ export function TaskBoard({
   tasks: Task[];
   members: Membership[];
   pending: number | null;
+  onDiscuss: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onStatus: (task: Task, status: TaskStatus) => void;
@@ -128,6 +131,14 @@ export function TaskBoard({
                         TS-{task.id}
                       </span>
                       <div className="task-actions">
+                        <button
+                          className="icon-button"
+                          aria-label={`Comments and activity for ${task.title}`}
+                          onClick={() => onDiscuss(task)}
+                          disabled={pending !== null}
+                        >
+                          <MessageSquare size={14} />
+                        </button>
                         <button
                           className="icon-button"
                           aria-label={`Edit ${task.title}`}

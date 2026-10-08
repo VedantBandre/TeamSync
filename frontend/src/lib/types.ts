@@ -53,3 +53,32 @@ export const statuses: { value: TaskStatus; label: string }[] = [
   { value: "IN_PROGRESS", label: "In progress" },
   { value: "DONE", label: "Done" },
 ];
+
+export interface TaskComment {
+  id: number;
+  task: number;
+  author: number | null;
+  author_name: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+export interface TaskActivity {
+  id: number;
+  actor: number | null;
+  actor_name: string;
+  kind:
+    | "CREATED"
+    | "UPDATED"
+    | "COMMENT_ADDED"
+    | "COMMENT_EDITED"
+    | "COMMENT_DELETED";
+  changes: Record<string, { from: string | null; to: string | null }>;
+  created_at: string;
+}
+export interface Page<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}

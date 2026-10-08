@@ -3,7 +3,7 @@ from rest_framework import viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 
-from tasks.models import Task
+from tasks.models import Task, TaskActivity
 
 from .models import Organization, Membership
 from .permissions import IsOrganizationAdminOrReadOnly
@@ -54,8 +54,17 @@ class MembershipViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def perform_destroy(self, instance):
         self.protect_last_admin(instance)
-        Task.objects.filter(
+        assigned_tasks = Task.objects.filter(
             project__organization_id=instance.organization_id,
             assigned_to_id=instance.user_id,
-        ).update(assigned_to=None)
+        )
+        # Lock and record automatic unassignments in the same removal transaction.
+        tasks = list(assigned_tasks.select_for_update(of=("self",)).order_by("id"))
+        TaskActivity.objects.bulk_create([
+            TaskActivity(
+                task=task, actor=self.request.user, actor_name=self.request.user.username,
+                kind="UPDATED", changes={"assigned_to": {"from": instance.user.username, "to": None}},
+            ) for task in tasks
+        ])
+        assigned_tasks.update(assigned_to=None)
         instance.delete()

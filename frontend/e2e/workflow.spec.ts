@@ -159,6 +159,73 @@ test("a team can register, organize projects, and move tasks forward", async ({
     ).toHaveValue("IN_PROGRESS");
   }
 
+  await page
+    .getByRole("button", {
+      name: "Comments and activity for Build the first version",
+    })
+    .click();
+  await page
+    .getByLabel("Add a comment", { exact: true })
+    .fill("First launch update");
+  await page.getByRole("button", { name: "Post comment", exact: true }).click();
+  await expect(
+    page.getByText("First launch update", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Edit comment", exact: true }).click();
+  await page
+    .getByLabel("Edit comment", { exact: true })
+    .fill("Updated launch plan");
+  await page.getByRole("button", { name: "Save comment", exact: true }).click();
+  await expect(
+    page.getByText("Updated launch plan", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Delete comment", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirm delete", exact: true })
+    .click();
+  await expect(
+    page.getByText("Updated launch plan", { exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Add a comment", { exact: true })
+    .fill("Ready for team review");
+  await page.getByRole("button", { name: "Post comment", exact: true }).click();
+  await expect(
+    page.getByText("Ready for team review", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(`${owner} edited a comment.`, { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Status: To do → In progress", { exact: true }),
+  ).toBeVisible();
+  const discussionAccessibility = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(
+    discussionAccessibility.violations.map(({ id, nodes }) => ({
+      id,
+      targets: nodes.map((node) => node.target),
+    })),
+  ).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath("discussion.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.reload();
+  await page
+    .getByRole("button", {
+      name: "Comments and activity for Build the first version",
+    })
+    .click();
+  await expect(
+    page.getByText("Ready for team review", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+
   await page.getByRole("button", { name: /Team members/ }).click();
   await page.getByLabel(`Role of ${owner}`).selectOption("MEMBER");
   await expect(page.getByRole("alert")).toContainText("at least one admin");
@@ -195,6 +262,31 @@ test("a team can register, organize projects, and move tasks forward", async ({
     .getByLabel("Status of Build the first version")
     .selectOption("DONE");
   await expect(page.getByText("67%", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Comments and activity for Build the first version",
+    })
+    .click();
+  await expect(
+    page.getByText("Ready for team review", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Edit comment", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Delete comment", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Add a comment", { exact: true })
+    .fill("Reviewed by teammate");
+  await page.getByRole("button", { name: "Post comment", exact: true }).click();
+  await expect(
+    page.getByText("Reviewed by teammate", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Edit comment", exact: true }),
+  ).toHaveCount(1);
+  await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("searchbox", { name: "Search tasks" }).fill("unmatched");
   await expect(page.getByRole("status")).toContainText("No tasks match");
   await page.getByRole("button", { name: "Clear filters" }).click();
