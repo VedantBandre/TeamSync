@@ -19,9 +19,11 @@ forward.
   priorities, and move tasks through To do → In progress → Done. Desktop drag and
   drop and touch-friendly status menus are supported.
 - **Find your next step:** combine search, assignee, deadline, and priority
-  filters, or focus on tasks assigned to you.
+  filters on the server, or focus on tasks assigned to you. Larger boards load
+  50 tasks per page while project totals include every task.
 - **Work together:** share single-use invitation links, manage admin/member
-  roles, and discuss tasks with editable comments and activity history.
+  roles, and discuss tasks with editable comments and activity history. Boards
+  and recent discussions refresh automatically with in-app update notices.
 - **Keep completed work:** archive projects as read-only boards and restore
   them when needed.
 - **Make it yours:** switch between light and dark themes; edit your display
@@ -31,6 +33,8 @@ forward.
 - **Manage account access:** change passwords and sign out with server-side
   session revocation. Verified email recovery is supported when an email
   provider is configured.
+- **Delete your account:** confirm your password and username. Shared work is
+  preserved; another admin must be in place before leaving a team you administer.
 
 ## A closer look
 
@@ -142,6 +146,10 @@ about a minute. Its free PostgreSQL database expires after 30 days and has no
 managed backups. This deployment is a demo; retaining data beyond that limit
 needs a separately configured database. See [Render's free service limits](https://render.com/docs/free).
 
+Slow API requests show a connection notice after six seconds and time out after
+90 seconds. Writes are never automatically retried after a timeout; refresh to
+check whether a change was saved before submitting it again.
+
 For the existing frontend-only Vercel deployment, use root directory `frontend`
 and set this build-time environment variable:
 
@@ -166,8 +174,10 @@ The API accepts JSON. Protected routes require
 | --- | --- |
 | `/api/register/`, `/api/token/`, `/api/token/refresh/` | Registration and authentication |
 | `/api/me/`, `/api/logout/`, `/api/password/change/` | Profile and account access |
+| `/api/account/deletion/` | Inspect team blockers (GET), then confirm deletion (POST) |
 | `/api/organizations/`, `/api/memberships/` | Teams and membership management |
 | `/api/projects/`, `/api/tasks/` | Projects and task boards |
+| `/api/tasks/summary/` | Project-wide and filtered counts for paged boards |
 | `/api/tasks/<id>/comments/`, `/api/tasks/<id>/activity/` | Discussion and history |
 | `/api/invitations/`, `/api/invitations/preview/`, `/api/invitations/accept/` | Invitation links |
 | `/api/projects/<id>/archive/`, `/api/projects/<id>/restore/` | Project archiving |
@@ -234,6 +244,7 @@ Apply migrations after pulling backend changes. Keep the normal local frontend
 and backend running after PR work; browser tests manage their own isolated
 servers. Keep secrets, email files, and local databases out of commits.
 
-Next priorities are enabling live recovery email, choosing a longer-lived free
-database, and adding pagination/server-side filters for larger workspaces.
+Next priorities are enabling live recovery email and choosing a longer-lived free
+database. Database selection is deferred; persistent notification inboxes and
+instant push updates remain future improvements.
 See the [roadmap](docs/ROADMAP.md) for the remaining work.

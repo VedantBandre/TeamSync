@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import App from "./App";
+import { filterTasks } from "./lib/taskFilters";
 import { setSession } from "./lib/api";
 import type { Task, User, WorkspaceData } from "./lib/types";
 
@@ -86,6 +87,39 @@ beforeEach(() => {
         : null;
       return json(data.projects[0]);
     }
+    if (
+      url.startsWith("/api/tasks/?") ||
+      url.startsWith("/api/tasks/summary/?")
+    ) {
+      const params = new URL(url, "http://localhost").searchParams;
+      const all = data.tasks.filter(
+        (task) => task.project === Number(params.get("project")),
+      );
+      const filtered = filterTasks(all, {
+        query: params.get("search") || "",
+        assignee: params.get("assignee") || "all",
+        due: "all",
+        priority: params.get("priority") || "all",
+      });
+      const counts = (tasks: Task[]) => ({
+        total: tasks.length,
+        TODO: tasks.filter((t) => t.status === "TODO").length,
+        IN_PROGRESS: tasks.filter((t) => t.status === "IN_PROGRESS").length,
+        DONE: tasks.filter((t) => t.status === "DONE").length,
+      });
+      if (url.includes("/summary/"))
+        return json({
+          all: counts(all),
+          filtered: counts(filtered),
+          revision: 0,
+        });
+      return json({
+        count: filtered.length,
+        next: null,
+        previous: null,
+        results: filtered,
+      });
+    }
     const resource = url.split("/")[2] as keyof WorkspaceData;
     return json(data[resource] || {}, 200);
   });
@@ -95,6 +129,9 @@ async function openWorkspace() {
   setSession({ access: "access", refresh: "refresh" });
   render(<App />);
   await screen.findByRole("heading", { name: /Launch plan/ });
+  await waitFor(() =>
+    expect(screen.queryByText("Loading tasks…")).not.toBeInTheDocument(),
+  );
 }
 
 it("signs in and loads the real workspace endpoints", async () => {
@@ -104,7 +141,9 @@ it("signs in and loads the real workspace endpoints", async () => {
   await actor.type(screen.getByLabelText("Password"), "password");
   await actor.click(screen.getByRole("button", { name: "Sign in" }));
   await screen.findByRole("heading", { name: /Launch plan/ });
-  expect(screen.getByRole("heading", { name: "Plan release" })).toBeVisible();
+  expect(
+    await screen.findByRole("heading", { name: "Plan release" }),
+  ).toBeVisible();
 });
 
 it("registers an account and returns to sign-in with confirmation", async () => {
@@ -183,15 +222,21 @@ it("filters tasks and clears an empty search", async () => {
     screen.getByRole("searchbox", { name: "Search tasks" }),
     "missing",
   );
-  expect(
-    screen.queryByRole("heading", { name: "Plan release" }),
-  ).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("heading", { name: "Plan release" }),
+    ).not.toBeInTheDocument(),
+  );
   await actor.click(screen.getByRole("button", { name: "Clear filters" }));
-  expect(screen.getByRole("heading", { name: "Plan release" })).toBeVisible();
-  await actor.click(screen.getByLabelText("Assigned to me"));
   expect(
-    screen.queryByRole("heading", { name: "Plan release" }),
-  ).not.toBeInTheDocument();
+    await screen.findByRole("heading", { name: "Plan release" }),
+  ).toBeVisible();
+  await actor.click(screen.getByLabelText("Assigned to me"));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("heading", { name: "Plan release" }),
+    ).not.toBeInTheDocument(),
+  );
 });
 
 it("requires confirmation before deleting a task", async () => {
@@ -292,9 +337,11 @@ it("opens a non-default project directly from its URL", async () => {
   expect(
     await screen.findByRole("heading", { name: "Second project." }),
   ).toBeVisible();
-  expect(
-    screen.queryByRole("heading", { name: "Plan release" }),
-  ).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("heading", { name: "Plan release" }),
+    ).not.toBeInTheDocument(),
+  );
   expect(document.title).toBe("Second project · TeamSync");
 });
 
@@ -473,11 +520,15 @@ it("edits a task priority and filters the saved result", async () => {
     screen.getByLabelText("Filter by priority"),
     "HIGH",
   );
-  expect(
-    screen.queryByRole("heading", { name: "Plan release" }),
-  ).not.toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("heading", { name: "Plan release" }),
+    ).not.toBeInTheDocument(),
+  );
   await actor.click(screen.getByRole("button", { name: "Clear filters" }));
-  expect(screen.getByRole("heading", { name: "Plan release" })).toBeVisible();
+  expect(
+    await screen.findByRole("heading", { name: "Plan release" }),
+  ).toBeVisible();
 });
 
 it("archives with confirmation, preserves the board, and restores from the archive list", async () => {
@@ -500,7 +551,9 @@ it("archives with confirmation, preserves the board, and restores from the archi
   expect(screen.getByRole("status")).toHaveTextContent(
     "archived and read-only",
   );
-  expect(screen.getByRole("heading", { name: "Plan release" })).toBeVisible();
+  expect(
+    await screen.findByRole("heading", { name: "Plan release" }),
+  ).toBeVisible();
   expect(
     screen.queryByRole("button", { name: "New task" }),
   ).not.toBeInTheDocument();

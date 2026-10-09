@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 let api: typeof import("./api");
 const response = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status });
 const fetchMock = vi.fn<typeof fetch>();
+afterEach(() => vi.useRealTimers());
 
 beforeEach(async () => {
   vi.resetModules();
@@ -105,6 +106,46 @@ describe("API sessions", () => {
 });
 
 describe("API errors", () => {
+  it("times out a stalled write without automatically submitting it twice", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(
+      (_url, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+    const pending = api.save("/tasks/", { title: "One write" });
+    const rejected = expect(pending).rejects.toMatchObject({
+      status: 0,
+      message: expect.stringContaining("refresh first"),
+    });
+    await vi.advanceTimersByTimeAsync(90000);
+    await rejected;
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("cancels an obsolete board read without dropping the login session", async () => {
+    api.setSession({ access: "access", refresh: "refresh" });
+    fetchMock.mockImplementation(
+      (_url, options) =>
+        new Promise((_resolve, reject) => {
+          options?.signal?.addEventListener("abort", () =>
+            reject(new DOMException("Aborted", "AbortError")),
+          );
+        }),
+    );
+    const controller = new AbortController();
+    const pending = api.request("/tasks/?project=1&page=1", {
+      signal: controller.signal,
+    });
+    const rejected = expect(pending).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    controller.abort();
+    await rejected;
+    expect(api.hasSession()).toBe(true);
+  });
   it("keeps field validation errors available to forms", async () => {
     fetchMock.mockResolvedValue(
       response({ title: ["This field is required."] }, 400),

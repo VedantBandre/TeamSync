@@ -14,6 +14,14 @@
 - Free Render deployment support before email-provider setup.
 - Responsive board column sizing and mobile layout improvements.
 
+## Current branch: workspace reliability
+
+`dev/workspace-reliability` adds slow-server feedback, bounded task paging and
+server-side filters, periodic board/discussion refresh with in-app notices,
+and confirmed account deletion that preserves shared work and team ownership.
+Database-provider selection is deferred at the user's request. This branch
+requires the new task indexes migration; merge and deploy after CI passes.
+
 ## Current status: deployed demo
 
 The Vercel frontend is connected to the Render Django API and PostgreSQL.
@@ -36,10 +44,12 @@ remain unfinished.
    recovery, select a longer-lived free database, and prepare backups/restore and
    monitoring. Validate invitations, role protection, and archive/task writes on
    the actual deployed PostgreSQL database before relying on it for ongoing work.
-2. **Larger workspaces:** pagination and server-side task search/filtering, with
-   permission and navigation checks for paginated records.
-3. **Live collaboration:** fresh task/discussion updates and useful notifications,
-   with reconnect handling and membership checks.
+2. **Larger workspaces:** extend paging/scoping to team/project/member lists if
+   needed, and measure search performance on larger datasets. Task paging and
+   server-side filters are implemented on the current branch.
+3. **Collaboration follow-through:** persistent notification inboxes and instant
+   push updates if usage warrants them. Periodic refresh and in-app notices are
+   implemented on the current branch.
 
 Each milestone starts from updated main on a focused `dev/<topic>` branch. Use
 `fix/<topic>` for isolated bug fixes. Run relevant checks, push the branch, and

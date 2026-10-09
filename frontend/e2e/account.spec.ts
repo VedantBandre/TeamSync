@@ -18,7 +18,7 @@ test("profile editing and the green dark theme survive refresh", async ({
   await page.getByLabel("Username").fill(username);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.getByRole("button", { name: "My Account" }).click();
+  await page.getByRole("button", { name: "My Account", exact: true }).click();
   await page.getByLabel("Display name").fill("Vedant Green");
   await page.getByLabel("Nickname").fill("V");
   await page
@@ -27,9 +27,9 @@ test("profile editing and the green dark theme survive refresh", async ({
   await page.getByRole("button", { name: "💻 Focusing", exact: true }).click();
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await expect(page.getByRole("status")).toHaveText("Your profile is saved.");
-  await expect(page.getByRole("button", { name: "My Account" })).toContainText(
-    "Vedant Green",
-  );
+  await expect(
+    page.getByRole("button", { name: "My Account", exact: true }),
+  ).toContainText("Vedant Green");
   await page.getByRole("button", { name: "Dark mode", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await page.reload();

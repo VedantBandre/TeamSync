@@ -1,4 +1,5 @@
 import type { WorkspaceData } from "./types";
+import { trackConnection } from "./connection";
 
 interface Tokens {
   access: string;
@@ -81,9 +82,16 @@ async function decode(response: Response): Promise<unknown> {
 }
 
 async function send(path: string, options: RequestInit = {}, token?: string) {
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  options.signal?.addEventListener("abort", cancel, { once: true });
+  if (options.signal?.aborted) controller.abort();
+  const timer = window.setTimeout(cancel, 90000);
+  const stopTracking = trackConnection();
   try {
     return await fetch(`${base}${path}`, {
       ...options,
+      signal: controller.signal,
       credentials: "omit",
       headers: {
         "Content-Type": "application/json",
@@ -92,9 +100,17 @@ async function send(path: string, options: RequestInit = {}, token?: string) {
       },
     });
   } catch {
+    if (options.signal?.aborted)
+      throw new DOMException("Request cancelled", "AbortError");
     throw new ApiError(0, {
-      detail: "Could not connect. Check your connection and try again.",
+      detail: controller.signal.aborted
+        ? "The server took too long to respond. Try again. If you were saving, refresh first to check whether it was saved."
+        : "Could not connect. Check your connection and try again.",
     });
+  } finally {
+    window.clearTimeout(timer);
+    options.signal?.removeEventListener("abort", cancel);
+    stopTracking();
   }
 }
 
@@ -176,13 +192,12 @@ export async function login(username: string, password: string) {
 }
 
 export async function loadWorkspace(): Promise<WorkspaceData> {
-  const [organizations, memberships, projects, tasks] = await Promise.all([
+  const [organizations, memberships, projects] = await Promise.all([
     request<WorkspaceData["organizations"]>("/organizations/"),
     request<WorkspaceData["memberships"]>("/memberships/"),
     request<WorkspaceData["projects"]>("/projects/"),
-    request<WorkspaceData["tasks"]>("/tasks/"),
   ]);
-  return { organizations, memberships, projects, tasks };
+  return { organizations, memberships, projects, tasks: [] };
 }
 
 export function save<T>(path: string, payload: unknown, method = "POST") {

@@ -3,6 +3,7 @@ import { Camera, UserRound } from "lucide-react";
 import type { User } from "../lib/types";
 import { save } from "../lib/api";
 import { AccountSecurity } from "./AccountSecurity";
+import { DeleteAccount } from "./DeleteAccount";
 import { ErrorNotice, SubmitButton } from "./Form";
 
 export function Account({
@@ -264,6 +265,7 @@ export function Account({
         </div>
       </form>
       <AccountSecurity user={user} />
+      <DeleteAccount user={user} />
     </>
   );
 }

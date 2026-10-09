@@ -1,6 +1,7 @@
 from datetime import timezone
 
 from django.db import transaction
+from django.db.models import Count, Max, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -10,6 +11,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from projects.archiving import require_active_project
+from projects.models import Project
+from .filtering import filter_tasks, positive_id
 
 from .models import Task, TaskActivity
 from .serializers import TaskSerializer, TaskCommentSerializer, TaskActivitySerializer
@@ -19,22 +22,54 @@ class DiscussionPagination(PageNumberPagination):
     page_size = 20
 
 
+class TaskPagination(PageNumberPagination):
+    page_size = 50
+
+
 class TaskViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = TaskSerializer
     queryset = Task.objects.all()
+    pagination_class = TaskPagination
+
+    def paginate_queryset(self, queryset):
+        # Keep existing deployed clients working during independent frontend/API
+        # rollouts. New boards always send project + page and use bounded pages.
+        if "project" not in self.request.query_params and "page" not in self.request.query_params:
+            return None
+        return super().paginate_queryset(queryset)
 
     def get_queryset(self):
         queryset = Task.objects.filter(
             project__organization__membership__user=self.request.user
         ).select_related("project__organization", "assigned_to")
+        if self.action in ("list", "summary") and "project" in self.request.query_params:
+            project_id = positive_id(self.request.query_params["project"], "project")
+            get_object_or_404(Project.objects.filter(organization__membership__user=self.request.user), pk=project_id)
+            queryset = queryset.filter(project_id=project_id)
         writes = self.action in ("update", "partial_update", "destroy", "comment_detail") or (self.action == "comments" and self.request.method == "POST")
         if writes:
             reference = get_object_or_404(queryset, pk=self.kwargs["pk"])
             # Lock project before task so archive/delete and task writes agree on order.
             require_active_project(reference.project_id)
             queryset = queryset.select_for_update(of=("self",))
+        return queryset.order_by("id")
+
+    def filter_queryset(self, queryset):
+        # List filters must never affect detail authorization or write lookups.
+        if self.action == "list":
+            return filter_tasks(queryset, self.request.query_params)
         return queryset
+
+    @action(detail=False, methods=["get"])
+    def summary(self, request):
+        queryset = self.get_queryset()
+        def counts(rows):
+            return rows.aggregate(total=Count("id"), TODO=Count("id", filter=Q(status="TODO")),
+                                  IN_PROGRESS=Count("id", filter=Q(status="IN_PROGRESS")),
+                                  DONE=Count("id", filter=Q(status="DONE")))
+        revision = TaskActivity.objects.filter(task__in=queryset).aggregate(latest=Max("id"))["latest"] or 0
+        return Response({"all": counts(queryset), "filtered": counts(filter_tasks(queryset, request.query_params)), "revision": revision})
 
     def record(self, task, kind, changes=None):
         TaskActivity.objects.create(

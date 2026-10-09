@@ -93,6 +93,17 @@ export interface Page<T> {
   previous: string | null;
   results: T[];
 }
+export interface TaskCounts {
+  total: number;
+  TODO: number;
+  IN_PROGRESS: number;
+  DONE: number;
+}
+export interface TaskSummary {
+  all: TaskCounts;
+  filtered: TaskCounts;
+  revision: number;
+}
 
 export interface Invitation {
   id: number;

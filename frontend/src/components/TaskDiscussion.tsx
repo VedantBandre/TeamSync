@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useAutoRefresh } from "../lib/autoRefresh";
 import { request, save } from "../lib/api";
 import type { Page, Task, TaskActivity, TaskComment, User } from "../lib/types";
 import { priorities, statuses } from "../lib/types";
@@ -55,6 +56,7 @@ export function TaskDiscussion({
   user: User;
   onClose: () => void;
 }) {
+  const sequence = useRef(0);
   const [comments, setComments] = useState<Page<TaskComment> | null>(null);
   const [activity, setActivity] = useState<Page<TaskActivity> | null>(null);
   const [error, setError] = useState<unknown>(null);
@@ -68,12 +70,14 @@ export function TaskDiscussion({
   const base = `/tasks/${task.id}`;
   useEffect(() => {
     let active = true;
+    const counter = sequence;
+    const id = ++sequence.current;
     Promise.all([
       request<Page<TaskComment>>(`${base}/comments/`),
       request<Page<TaskActivity>>(`${base}/activity/`),
     ])
       .then(([rows, history]) => {
-        if (active) {
+        if (active && id === sequence.current) {
           setComments(rows);
           setActivity(history);
         }
@@ -86,26 +90,46 @@ export function TaskDiscussion({
       });
     return () => {
       active = false;
+      counter.current++;
     };
   }, [base]);
 
-  async function refresh() {
-    setLoading(true);
+  async function refresh(silent = false) {
+    const id = ++sequence.current;
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const [rows, history] = await Promise.all([
         request<Page<TaskComment>>(`${base}/comments/`),
         request<Page<TaskActivity>>(`${base}/activity/`),
       ]);
+      if (id !== sequence.current) return;
+      if (
+        silent &&
+        (JSON.stringify(rows.results) !== JSON.stringify(comments?.results) ||
+          JSON.stringify(history.results) !== JSON.stringify(activity?.results))
+      )
+        setNotice("Discussion updated.");
       setComments(rows);
       setActivity(history);
     } catch (failure) {
-      setError(failure);
+      if (id === sequence.current) setError(failure);
+      if (silent) throw failure;
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
+  useAutoRefresh(
+    () => refresh(true),
+    !busy &&
+      !loading &&
+      editing === null &&
+      deleting === null &&
+      (comments?.results.length ?? 0) <= 20 &&
+      (activity?.results.length ?? 0) <= 20,
+  );
   async function loadMore(kind: "comments" | "activity", next: string) {
+    sequence.current++;
     setLoading(true);
     setError(null);
     try {
@@ -128,6 +152,7 @@ export function TaskDiscussion({
   }
   async function mutate(action: "add" | "edit" | "delete", id?: number) {
     if (busy || loading || readOnly) return;
+    sequence.current++;
     setBusy(true);
     setError(null);
     setNotice("");
@@ -335,6 +360,7 @@ export function TaskDiscussion({
                             className="text-button"
                             disabled={busy || loading}
                             onClick={() => {
+                              sequence.current++;
                               setEditing(comment.id);
                               setEditBody(comment.body);
                               setDeleting(null);
@@ -345,7 +371,10 @@ export function TaskDiscussion({
                           <button
                             className="text-button danger-text"
                             disabled={busy || loading}
-                            onClick={() => setDeleting(comment.id)}
+                            onClick={() => {
+                              sequence.current++;
+                              setDeleting(comment.id);
+                            }}
                           >
                             Delete comment
                           </button>
