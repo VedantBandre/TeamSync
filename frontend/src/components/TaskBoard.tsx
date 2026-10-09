@@ -10,11 +10,12 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import type { Membership, Task, TaskStatus } from "../lib/types";
+import type { Membership, Task, TaskStatus, TaskCounts } from "../lib/types";
 import { priorities, statuses } from "../lib/types";
 
 export function TaskBoard({
   tasks,
+  counts,
   readOnly = false,
   members,
   pending,
@@ -25,6 +26,7 @@ export function TaskBoard({
   onCreate,
 }: {
   tasks: Task[];
+  counts?: TaskCounts;
   readOnly?: boolean;
   members: Membership[];
   pending: number | null;
@@ -78,7 +80,9 @@ export function TaskBoard({
               <h2 id={`column-${status.value}`}>
                 <Icon size={17} />
                 {status.label}
-                <span className="count">{items.length}</span>
+                <span className="count">
+                  {counts?.[status.value] ?? items.length}
+                </span>
               </h2>
               <button
                 className="icon-button"
@@ -230,11 +234,13 @@ export function TaskBoard({
                 <div className="empty-column">
                   <Icon size={23} />
                   <p>
-                    {status.value === "DONE"
-                      ? "Good work will land here."
-                      : status.value === "IN_PROGRESS"
-                        ? "Ready when you are."
-                        : "Room for your next idea."}
+                    {counts && counts[status.value] > 0
+                      ? "More tasks are on another page."
+                      : status.value === "DONE"
+                        ? "Good work will land here."
+                        : status.value === "IN_PROGRESS"
+                          ? "Ready when you are."
+                          : "Room for your next idea."}
                   </p>
                 </div>
               )}

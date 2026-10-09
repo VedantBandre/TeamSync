@@ -20,6 +20,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from accounts.views import RegisterView, CurrentUserView
+from accounts.deletion import AccountDeletionView
 
 from organizations.views import OrganizationViewSet, MembershipViewSet
 from organizations.invitations import InvitationViewSet, InvitationLookupView, InvitationAcceptView
@@ -46,6 +47,7 @@ urlpatterns += [
     path("api/invitations/accept/", InvitationAcceptView.as_view()),
     path("api/register/", RegisterView.as_view(), name="register"),
     path("api/me/", CurrentUserView.as_view(), name="current-user"),
+    path("api/account/deletion/", AccountDeletionView.as_view()),
     path("api/token/", LoginView.as_view()),
     path("api/token/refresh/", RefreshView.as_view()),
     path("api/logout/", LogoutView.as_view()),

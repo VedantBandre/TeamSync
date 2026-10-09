@@ -1,10 +1,12 @@
 import { Account } from "./Account";
 import { ThemeToggle } from "./ThemeToggle";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArchiveProjectDialog } from "./ArchiveProjectDialog";
 import { InvitationManager } from "./Invitations";
 import { TaskDiscussion } from "./TaskDiscussion";
-import { filterTasks, type DueFilter } from "../lib/taskFilters";
+import type { DueFilter } from "../lib/taskFilters";
+import { useTaskPage } from "../lib/taskPage";
+import { useAutoRefresh } from "../lib/autoRefresh";
 import { priorities } from "../lib/types";
 import {
   ArrowRight,
@@ -63,6 +65,9 @@ export function Workspace({
   onUserChanged: (user: User) => void;
   onLogout: () => void;
 }) {
+  const metadataSequence = useRef(0);
+  const [boardRevision, setBoardRevision] = useState(0);
+  const [syncError, setSyncError] = useState(false);
   const [data, setData] = useState<WorkspaceData>(emptyData);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -86,9 +91,10 @@ export function Workspace({
   const [pending, setPending] = useState<number | null>(null);
   useEffect(() => {
     let active = true;
+    const sequence = ++metadataSequence.current;
     loadWorkspace()
       .then((result) => {
-        if (active) {
+        if (active && sequence === metadataSequence.current) {
           setData(result);
           setLoaded(true);
         }
@@ -150,13 +156,34 @@ export function Workspace({
   const isAdmin = members.some(
     (item) => item.user === user.id && item.role === "ADMIN",
   );
-  const tasks = data.tasks.filter((task) => task.project === project?.id);
-  const visibleTasks = filterTasks(tasks, {
-    query,
-    assignee: mine ? String(user.id) : assignee,
-    due,
-    priority,
-  });
+  const board = useTaskPage(
+    project?.id,
+    {
+      query,
+      assignee: mine ? String(user.id) : assignee,
+      due,
+      priority,
+    },
+    boardRevision,
+    pending !== null || !!editor || !!archiveAction,
+  );
+  const visibleTasks = board.page.results;
+  const counts = board.summary.all;
+  useAutoRefresh(async () => {
+    if (loading || pending !== null || editor || archiveAction) return;
+    const sequence = ++metadataSequence.current;
+    try {
+      const result = await loadWorkspace();
+      if (sequence !== metadataSequence.current) return;
+      setData((current) =>
+        JSON.stringify(current) === JSON.stringify(result) ? current : result,
+      );
+      setSyncError(false);
+    } catch (failure) {
+      if (sequence === metadataSequence.current) setSyncError(true);
+      throw failure;
+    }
+  }, loaded);
   const filtersActive =
     !!query ||
     mine ||
@@ -170,17 +197,21 @@ export function Workspace({
     setDue("all");
     setPriority("all");
   }
-  const completed = tasks.filter((task) => task.status === "DONE").length;
-  const progress = tasks.length
-    ? Math.round((completed / tasks.length) * 100)
+  const completed = counts.DONE;
+  const progress = counts.total
+    ? Math.round((completed / counts.total) * 100)
     : 0;
 
   async function reload(resource?: string, id?: number, deleted = false) {
     setLoading(true);
     setError(null);
+    const sequence = ++metadataSequence.current;
     try {
       const result = await loadWorkspace();
+      if (sequence !== metadataSequence.current) return;
       setData(result);
+      setBoardRevision((value) => value + 1);
+      setSyncError(false);
       setLoaded(true);
       // A completed mutation must not redirect someone who navigated while it saved.
       if (window.location.pathname + window.location.search === location) {
@@ -216,17 +247,8 @@ export function Workspace({
     setPending(task.id);
     setError(null);
     try {
-      const result = await save<Task>(
-        `/tasks/${task.id}/`,
-        { status },
-        "PATCH",
-      );
-      setData((current) => ({
-        ...current,
-        tasks: current.tasks.map((item) =>
-          item.id === result.id ? result : item,
-        ),
-      }));
+      await save<Task>(`/tasks/${task.id}/`, { status }, "PATCH");
+      setBoardRevision((value) => value + 1);
     } catch (failure) {
       setError(failure);
     } finally {
@@ -478,6 +500,12 @@ export function Workspace({
         <main className="workspace-main">
           <div className="workspace-error">
             <ErrorNotice error={error} />
+            {syncError && (
+              <p className="sync-notice" role="status">
+                Connection interrupted. Your last loaded work is still here;
+                updates will resume automatically.
+              </p>
+            )}
           </div>
           {loading && !loaded ? (
             <div className="large-empty" role="status">
@@ -963,7 +991,7 @@ export function Workspace({
                   <div>
                     <span className="small-label">TOTAL TASKS</span>
                     <strong>
-                      {tasks.length}
+                      {counts.total}
                       <span>on the board</span>
                     </strong>
                   </div>
@@ -975,10 +1003,7 @@ export function Workspace({
                   <div>
                     <span className="small-label">IN PROGRESS</span>
                     <strong>
-                      {
-                        tasks.filter((task) => task.status === "IN_PROGRESS")
-                          .length
-                      }
+                      {counts.IN_PROGRESS}
                       <span>moving forward</span>
                     </strong>
                   </div>
@@ -990,18 +1015,18 @@ export function Workspace({
                   </div>
                   <progress
                     value={completed}
-                    max={tasks.length || 1}
+                    max={counts.total || 1}
                     aria-label="Completed tasks"
                   />
                   <span>
-                    {completed} of {tasks.length} tasks completed
+                    {completed} of {counts.total} tasks completed
                   </span>
                 </div>
               </section>
               <div className="board-toolbar">
                 <div className="board-label">
                   <LayoutDashboard size={17} />
-                  Board<span className="pill">{tasks.length}</span>
+                  Board<span className="pill">{counts.total}</span>
                 </div>
                 <div className="board-filters">
                   <label className="mine-filter">
@@ -1062,6 +1087,7 @@ export function Workspace({
                       type="search"
                       aria-label="Search tasks"
                       placeholder="Search tasks…"
+                      maxLength={200}
                       value={query}
                       onChange={(event) => setQuery(event.target.value)}
                     />
@@ -1070,16 +1096,38 @@ export function Workspace({
               </div>
               {filtersActive && (
                 <p className="filter-empty" role="status">
-                  {visibleTasks.length === 0
-                    ? "No tasks match your filters."
-                    : `Showing ${visibleTasks.length} of ${tasks.length} tasks.`}{" "}
+                  {board.loading
+                    ? "Applying filters…"
+                    : board.page.count === 0
+                      ? "No tasks match your filters."
+                      : `Showing ${board.page.count} of ${counts.total} tasks.`}{" "}
                   <button className="text-button" onClick={clearFilters}>
                     Clear filters
                   </button>
                 </p>
               )}
+              <ErrorNotice error={board.error} />
+              {!!board.error && (
+                <button className="text-button" onClick={board.retry}>
+                  Try loading tasks again
+                </button>
+              )}
+              {board.notice && (
+                <p className="sync-notice" role="status">
+                  {board.notice}{" "}
+                  <button className="text-button" onClick={board.dismissNotice}>
+                    Dismiss
+                  </button>
+                </p>
+              )}
+              {board.loading && (
+                <p className="form-hint" role="status">
+                  Loading tasks…
+                </p>
+              )}
               <TaskBoard
                 tasks={visibleTasks}
+                counts={board.summary.filtered}
                 readOnly={!!project.archived_at}
                 members={members}
                 pending={pending ?? (loading ? -1 : null)}
@@ -1096,6 +1144,33 @@ export function Workspace({
                 onStatus={(task, status) => void updateStatus(task, status)}
                 onCreate={openTask}
               />
+              {board.page.count > 50 && (
+                <nav className="task-pagination" aria-label="Task pages">
+                  <button
+                    className="button secondary"
+                    disabled={
+                      !board.page.previous || board.loading || pending !== null
+                    }
+                    onClick={() => board.selectPage(board.pageNumber - 1)}
+                  >
+                    Previous tasks
+                  </button>
+                  <span>
+                    Page {board.pageNumber} of{" "}
+                    {Math.ceil(board.page.count / 50)} · {board.page.count}{" "}
+                    matching tasks
+                  </span>
+                  <button
+                    className="button secondary"
+                    disabled={
+                      !board.page.next || board.loading || pending !== null
+                    }
+                    onClick={() => board.selectPage(board.pageNumber + 1)}
+                  >
+                    Next tasks
+                  </button>
+                </nav>
+              )}
               <footer className="board-footer">
                 <span>
                   <span className="mini-dot" />
@@ -1103,7 +1178,9 @@ export function Workspace({
                     ? "Saving your changes…"
                     : loading
                       ? "Refreshing your workspace…"
-                      : "Shared with your team"}
+                      : syncError || board.error
+                        ? "Reconnecting… your last loaded work is still here."
+                        : "Shared with your team · updates automatically"}
                 </span>
                 <span>
                   {members.length} {members.length === 1 ? "member" : "members"}{" "}
@@ -1134,7 +1211,7 @@ export function Workspace({
           }}
         />
       )}
-      {discussion && (
+      {discussion && !unavailable && (
         <TaskDiscussion
           key={discussion.id}
           task={discussion}
@@ -1143,7 +1220,7 @@ export function Workspace({
           onClose={() => setDiscussion(null)}
         />
       )}
-      {editor && (
+      {editor && !unavailable && (
         <EditorDialog
           key={JSON.stringify(editor)}
           editor={editor}

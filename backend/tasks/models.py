@@ -4,6 +4,12 @@ from projects.models import Project
 
 # Create your models here.
 class Task(models.Model):
+    class Meta:
+        indexes = [
+            models.Index(fields=["project", "id"], name="task_project_page_idx"),
+            models.Index(fields=["project", "status"], name="task_project_status_idx"),
+        ]
+
     STATUS_CHOICES = [
         ("TODO", "To Do"),
         ("IN_PROGRESS", "In Progress"),

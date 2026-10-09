@@ -1511,6 +1511,60 @@ td select {
   line-height: 1.5;
   min-height: 44px;
 }
+.server-status {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(420px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid var(--tone-e8eee6);
+  border-radius: 12px;
+  background: var(--tone-fdfefa);
+  box-shadow: 0 6px 24px #0002;
+  font-size: 13px;
+}
+.server-status svg {
+  flex-shrink: 0;
+}
+.server-status p {
+  margin: 6px 0 0;
+}
+.task-pagination,
+.sync-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 16px;
+  font-size: 13px;
+}
+.task-pagination .button {
+  min-height: 44px;
+}
+.sync-notice {
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: var(--tone-e8eee6);
+}
+.sync-notice .text-button {
+  min-height: 44px;
+  padding: 0 8px;
+}
+.account-danger .button {
+  margin-top: 16px;
+}
+.deletion-blockers ul {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+.deletion-blockers a {
+  text-decoration: underline;
+}
 .connection-screen {
   display: flex;
   flex-direction: column;

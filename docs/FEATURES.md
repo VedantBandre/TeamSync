@@ -15,6 +15,24 @@ covers upcoming deadlines until midnight seven calendar days from today.
 Completed tasks are excluded from these deadline views. No due date includes
 completed tasks. Filters reset when navigating between projects.
 
+Boards fetch up to 50 tasks per page, scoped to the selected project. Previous/
+Next tasks navigate the matching results; changing filters returns to page one.
+Search is debounced, limited to 200 characters, and matches title/description.
+Project progress always counts every task, while column counts reflect all
+matching tasks, including those on other pages. Empty columns explain when
+their matching tasks are on another page.
+
+The board calls `GET /api/tasks/?project=<id>&page=1`, with optional `search`,
+`assignee` (member ID or `unassigned`), `priority`, and `status`. Date filters use
+timezone-aware `due_from` (inclusive), `due_before` (exclusive), and
+`incomplete=true`; no deadline uses `no_due_date=true`. Local calendar boundaries
+come from the browser so Due today respects the user's timezone. Responses use
+`{count, next, previous, results}`. `GET /api/tasks/summary/?project=<id>` accepts
+the same filters and returns `all`/`filtered` counts plus an activity revision.
+Inaccessible projects return 404. Detail/write operations ignore list filters.
+Unscoped `/api/tasks/` without a page retains the legacy array response for
+independent frontend/API rollouts; the current frontend always uses paged reads.
+
 On desktop, drag a card using its grip into another column. Status dropdowns work
 with keyboards and touch devices. Moves are shown only after the server saves
 successfully; failed moves retain the original status and display an error.
@@ -37,6 +55,17 @@ Authors' names remain visible if their user accounts are later removed.
 Existing tasks start recording new changes; earlier activity is not fabricated.
 Deleting a task/project/team also removes the related discussion and activity.
 This is a collaboration history, not a permanent compliance audit log.
+
+Visible pages check for updates approximately every 20 seconds and when focus
+or connectivity returns. Hidden/offline pages pause; failures back off to at
+most two minutes. Board notices include new activity, including comments on
+tasks outside the current page. This is periodic refresh, not instant push or
+an email/browser notification service. Failed reads preserve loaded work and
+comment drafts; writes are not automatically retried.
+
+Recent comments/activity refresh while a discussion is open. Editing, deletion,
+and viewing older loaded pages pause discussion auto-refresh; use Refresh
+discussion to return to the latest page. Unsent comment text stays in place.
 
 Authenticated endpoints, all scoped to the task's team:
 
@@ -181,3 +210,30 @@ Authentication endpoints have persistent database rate counters across workers;
 addresses, old session rejection, delivery failures, and simultaneous PostgreSQL
 reset/verification requests. This is basic application abuse protection; deployment
 proxy behavior and edge controls must be validated separately.
+
+## Account deletion
+
+My Account includes a separate deletion confirmation. The API requires the
+current password and exact username, then checks team roles again inside a
+transaction. Promote another admin (or explicitly delete the team) before
+deleting an account that is the only admin. Teams originally created by the
+account are also checked even if the creator previously left them.
+
+Deletion transfers team creation ownership to a remaining active admin,
+removes memberships, unassigns tasks, and removes the profile/photo, recovery
+email/challenges, and login sessions. Shared projects, tasks, and conversations
+stay. Retained comment/activity attribution becomes “Deleted member”; original
+comment text stays. This is not automatic deletion of user-written mentions or
+provider logs/backups.
+
+- `GET /api/account/deletion/` returns `can_delete` and `blocked_teams`.
+- `POST /api/account/deletion/` takes `current_password` and `confirm_username`,
+  returns 204, and invalidates existing access and refresh tokens.
+
+## Slow connections
+
+Requests taking more than six seconds show a server-startup notice. A 90-second
+timeout returns control to the user; it does not sign them out or re-submit a
+write. After a timed-out save, refresh and check the result before retrying.
+Obsolete task requests are cancelled on filter/project changes, and older
+responses cannot replace the current page.

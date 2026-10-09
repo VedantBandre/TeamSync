@@ -293,7 +293,9 @@ test("a team can register, organize projects, and move tasks forward", async ({
   ).toHaveCount(1);
   await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("searchbox", { name: "Search tasks" }).fill("unmatched");
-  await expect(page.getByRole("status")).toContainText("No tasks match");
+  await expect(
+    page.getByRole("status").filter({ hasText: "No tasks match" }),
+  ).toContainText("No tasks match");
   await page.getByRole("button", { name: "Clear filters" }).click();
   await expect(
     page.getByRole("heading", { name: "Build the first version" }),
