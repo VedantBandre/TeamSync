@@ -75,7 +75,7 @@ test("board fits its content and remains usable across screen sizes", async ({
     }
   }
 
-  for (const width of [320, 390, 600, 768, 900, 1024, 1440]) {
+  for (const width of [312, 320, 390, 600, 768, 900, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     await assertNoOverflow();
     await page.getByRole("button", { name: "New task", exact: true }).click();
